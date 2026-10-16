@@ -38,9 +38,6 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         uint256 earned; // protocol fee kept
     }
 
-    /// @dev Temporary: functions of later build steps revert until they are implemented.
-    error NotImplemented();
-
     /// @notice EIP-712 type of the attestation an inspector or carrier signs.
     bytes32 public constant ATTESTATION_TYPEHASH =
         keccak256("Attestation(uint256 dealId,uint8 kind,bytes32 evidenceHash,uint64 issuedAt,uint256 nonce)");
@@ -355,35 +352,47 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function withdrawFees(address) external pure {
-        revert NotImplemented();
+    function withdrawFees(address token) external nonReentrant {
+        uint256 amount = accruedFees[token];
+        if (amount == 0) revert NothingToWithdraw();
+        accruedFees[token] = 0;
+        address recipient = feeRecipient;
+        emit FeesWithdrawn(token, recipient, amount);
+        IERC20(token).safeTransfer(recipient, amount);
     }
 
     // ───────────────────────────── Admin (new deals only) ─────────────────────────────
+    // None of these can read or write a deal: they only shape deals created afterwards.
 
     /// @inheritdoc IWasitEscrow
-    function setFeeRecipient(address) external pure {
-        revert NotImplemented();
+    function setFeeRecipient(address recipient) external onlyOwner {
+        if (recipient == address(0)) revert ZeroAddress();
+        feeRecipient = recipient;
+        emit FeeRecipientSet(recipient);
     }
 
     /// @inheritdoc IWasitEscrow
-    function setDefaultFee(uint16) external pure {
-        revert NotImplemented();
+    function setDefaultFee(uint16 feeBps) external onlyOwner {
+        if (feeBps > WasitTypes.MAX_FEE_BPS) revert FeeTooHigh(feeBps);
+        defaultFeeBps = feeBps;
+        emit DefaultFeeSet(feeBps);
     }
 
     /// @inheritdoc IWasitEscrow
-    function setTokenAllowed(address, bool) external pure {
-        revert NotImplemented();
+    function setTokenAllowed(address token, bool allowed) external onlyOwner {
+        if (token == address(0)) revert ZeroAddress();
+        isTokenAllowed[token] = allowed;
+        emit TokenAllowed(token, allowed);
     }
 
     /// @inheritdoc IWasitEscrow
-    function pause() external pure {
-        revert NotImplemented();
+    function pause() external onlyOwner {
+        _pause();
     }
 
     /// @inheritdoc IWasitEscrow
-    function unpause() external pure {
-        revert NotImplemented();
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     // ───────────────────────────── Views ─────────────────────────────
