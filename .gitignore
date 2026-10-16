@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Foundry
+contracts/out/
+contracts/cache/
+# Mainnet and local broadcasts are never committed; testnet (31611) runs are kept as evidence
+contracts/broadcast/*/31612/
+contracts/broadcast/*/31337/
+contracts/broadcast/**/dry-run/
+lcov.info
+
+# Web
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
+# Secrets
+.env*
+!.env.example
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
