@@ -21,6 +21,8 @@ runs = 256
 [profile.default.invariant]
 runs = 64
 depth = 64
+# Handlers only make calls whose preconditions hold, so any revert is a bug worth seeing.
+fail_on_revert = true
 
 [profile.ci.fuzz]
 runs = 10000
