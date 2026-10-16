@@ -7,6 +7,7 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IAdvanceBond} from "./interfaces/IAdvanceBond.sol";
@@ -28,6 +29,14 @@ import {
 ///         never move deal funds or block an exit.
 contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
+
+    /// @dev Outcome of an arbiter ruling (see `resolve`).
+    struct Split {
+        uint256 toSupplier; // balance share minus its fee
+        uint256 toBuyer; // escrowed part: balance not awarded + refunded share of the advance fee
+        uint256 claimAmount; // part of the net advance claimed from the bond for the buyer
+        uint256 earned; // protocol fee kept
+    }
 
     /// @dev Temporary: functions of later build steps revert until they are implemented.
     error NotImplemented();
@@ -196,10 +205,20 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
+    /// @dev An unresolved dispute lapses in the supplier's favor: the claimant (buyer) carries the
+    ///      burden of proof, and the attested flow continues without a ruling (ADR-019).
     function release(uint256 dealId) external nonReentrant {
-        Deal storage d = _dealIn(dealId, DealState.Shipped);
-        uint256 challengeEnds = uint256(d.shippedAt) + d.terms.challengeWindow;
-        if (block.timestamp <= challengeEnds) revert DeadlineNotReached(challengeEnds);
+        Deal storage d = _deals[dealId];
+        if (d.state == DealState.Shipped) {
+            uint256 challengeEnds = uint256(d.shippedAt) + d.terms.challengeWindow;
+            if (block.timestamp <= challengeEnds) revert DeadlineNotReached(challengeEnds);
+        } else if (d.state == DealState.Disputed) {
+            uint256 ruleBy = uint256(d.disputedAt) + d.terms.arbitrationPeriod;
+            if (block.timestamp <= ruleBy) revert DeadlineNotReached(ruleBy);
+            emit DisputeLapsed(dealId);
+        } else {
+            revert InvalidState(dealId, d.state);
+        }
         _releaseToSupplier(dealId, d);
     }
 
@@ -211,13 +230,43 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function dispute(uint256, bytes32) external pure {
-        revert NotImplemented();
+    function dispute(uint256 dealId, bytes32 reasonHash) external {
+        Deal storage d = _dealIn(dealId, DealState.Shipped);
+        if (msg.sender != d.terms.buyer) revert Unauthorized(msg.sender);
+        uint256 challengeEnds = uint256(d.shippedAt) + d.terms.challengeWindow;
+        if (block.timestamp > challengeEnds) revert DeadlinePassed(challengeEnds);
+        d.state = DealState.Disputed;
+        d.disputedAt = uint64(block.timestamp);
+        emit Disputed(dealId, reasonHash);
     }
 
     /// @inheritdoc IWasitEscrow
-    function resolve(uint256, uint16, uint16) external pure {
-        revert NotImplemented();
+    /// @dev Money per ARCHITECTURE §5: the supplier's share rounds down, refunds round up, fees round
+    ///      down. The protocol keeps the advance fee only on the part of the advance not refunded.
+    function resolve(uint256 dealId, uint16 toSupplierBps, uint16 advanceRefundBps) external nonReentrant {
+        Deal storage d = _dealIn(dealId, DealState.Disputed);
+        DealTerms storage t = d.terms;
+        if (msg.sender != t.arbiter) revert Unauthorized(msg.sender);
+        uint256 ruleBy = uint256(d.disputedAt) + t.arbitrationPeriod;
+        if (block.timestamp > ruleBy) revert DeadlinePassed(ruleBy);
+        if (toSupplierBps > WasitTypes.BPS) revert InvalidBps(toSupplierBps);
+        if (advanceRefundBps > WasitTypes.BPS) revert InvalidBps(advanceRefundBps);
+        bool bonded = t.bonder != address(0);
+        if (advanceRefundBps != 0 && !bonded) revert NoBondForAdvanceRefund();
+
+        Split memory s = _split(d, toSupplierBps, advanceRefundBps);
+        d.state = DealState.Resolved;
+        d.balanceHeld = 0;
+        d.advanceFeeHeld = 0;
+        accruedFees[t.token] += s.earned;
+        emit Resolved(dealId, s.toSupplier, s.toBuyer, s.claimAmount, s.earned);
+
+        IERC20 token = IERC20(t.token);
+        if (s.toSupplier != 0) token.safeTransfer(t.supplier, s.toSupplier);
+        if (s.toBuyer != 0) token.safeTransfer(t.buyer, s.toBuyer);
+        if (bonded) {
+            _settleBond(dealId, d, advanceRefundBps != 0 ? BondSettlement.Claim : BondSettlement.Release, s.claimAmount);
+        }
     }
 
     /// @inheritdoc IWasitEscrow
@@ -412,6 +461,23 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         emit BalanceFunded(dealId, t.balanceAmount);
 
         IERC20(t.token).safeTransferFrom(msg.sender, address(this), t.balanceAmount);
+    }
+
+    /// @dev Arbiter split: supplier share rounds down, refunds round up, fees round down (ADR-018).
+    function _split(Deal storage d, uint16 toSupplierBps, uint16 advanceRefundBps)
+        private
+        view
+        returns (Split memory s)
+    {
+        uint256 held = d.balanceHeld;
+        uint256 advanceFee = d.advanceFeeHeld;
+        uint256 share = held * toSupplierBps / WasitTypes.BPS;
+        uint256 shareFee = _fee(share, d.terms.feeBps);
+        uint256 feeRefund = Math.mulDiv(advanceFee, advanceRefundBps, WasitTypes.BPS, Math.Rounding.Ceil);
+        s.toSupplier = share - shareFee;
+        s.toBuyer = held - share + feeRefund;
+        s.claimAmount = Math.mulDiv(_netAdvance(d.terms), advanceRefundBps, WasitTypes.BPS, Math.Rounding.Ceil);
+        s.earned = shareFee + advanceFee - feeRefund;
     }
 
     /// @dev Pays the balance minus its fee to the supplier, earns both fees, releases the bond.
