@@ -2,12 +2,23 @@
 pragma solidity 0.8.28;
 
 import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IAdvanceBond} from "./interfaces/IAdvanceBond.sol";
 import {IWasitEscrow} from "./interfaces/IWasitEscrow.sol";
-import {AttestationKind, BondSettlement, Deal, DealState, DealTerms, WasitTypes} from "./libraries/WasitTypes.sol";
+import {
+    AttestationKind,
+    BondSettlement,
+    BondStatus,
+    Deal,
+    DealState,
+    DealTerms,
+    WasitTypes
+} from "./libraries/WasitTypes.sol";
 
 /// @title WasitEscrow
 /// @notice Advance-payment protection for stablecoin trade. The advance goes straight to the
@@ -15,6 +26,8 @@ import {AttestationKind, BondSettlement, Deal, DealState, DealTerms, WasitTypes}
 ///         sign off and a challenge window passes. The owner configures new deals only and can
 ///         never move deal funds or block an exit.
 contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, EIP712 {
+    using SafeERC20 for IERC20;
+
     /// @dev Temporary: functions of later build steps revert until they are implemented.
     error NotImplemented();
 
@@ -110,13 +123,18 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function fundAdvance(uint256) external pure {
-        revert NotImplemented();
+    function fundAdvance(uint256 dealId) external nonReentrant {
+        _fundAdvance(dealId);
     }
 
     /// @inheritdoc IWasitEscrow
-    function fundAdvanceWithPermit(uint256, uint256, uint8, bytes32, bytes32) external pure {
-        revert NotImplemented();
+    function fundAdvanceWithPermit(uint256 dealId, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+        nonReentrant
+    {
+        DealTerms storage t = _deals[dealId].terms;
+        _tryPermit(t.token, t.advanceAmount, deadline, v, r, s);
+        _fundAdvance(dealId);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -253,6 +271,36 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     function _dealIn(uint256 dealId, DealState expected) private view returns (Deal storage d) {
         d = _deals[dealId];
         if (d.state != expected) revert InvalidState(dealId, d.state);
+    }
+
+    /// @dev Sends the net advance straight from the buyer to the supplier and escrows the fee.
+    function _fundAdvance(uint256 dealId) private {
+        Deal storage d = _dealIn(dealId, DealState.Accepted);
+        DealTerms storage t = d.terms;
+        if (msg.sender != t.buyer) revert Unauthorized(msg.sender);
+        if (!d.arbiterAccepted) revert ArbiterNotAccepted(dealId);
+        if (t.bonder != address(0)) {
+            if (_bond.bondOf(dealId).status != BondStatus.Active || _bond.coverageBps(dealId) < t.bondRatioBps) {
+                revert BondNotReady(dealId);
+            }
+        }
+
+        uint256 fee = _advanceFee(t);
+        uint256 net = t.advanceAmount - fee;
+        d.state = DealState.AdvancePaid;
+        d.advancePaidAt = uint64(block.timestamp);
+        d.advanceFeeHeld = uint128(fee);
+        emit AdvanceFunded(dealId, net, fee);
+
+        IERC20 token = IERC20(t.token);
+        token.safeTransferFrom(msg.sender, t.supplier, net);
+        if (fee != 0) token.safeTransferFrom(msg.sender, address(this), fee);
+    }
+
+    /// @dev A permit can be front-run by anyone who saw it; ignore failure and let the transfer
+    ///      rely on the allowance that the front-run permit set.
+    function _tryPermit(address token, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) private {
+        try IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s) {} catch {}
     }
 
     /// @dev Calls the bond in try/catch so a bond or oracle failure never blocks the caller's exit.
