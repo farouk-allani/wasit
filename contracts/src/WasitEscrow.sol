@@ -196,13 +196,18 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function release(uint256) external pure {
-        revert NotImplemented();
+    function release(uint256 dealId) external nonReentrant {
+        Deal storage d = _dealIn(dealId, DealState.Shipped);
+        uint256 challengeEnds = uint256(d.shippedAt) + d.terms.challengeWindow;
+        if (block.timestamp <= challengeEnds) revert DeadlineNotReached(challengeEnds);
+        _releaseToSupplier(dealId, d);
     }
 
     /// @inheritdoc IWasitEscrow
-    function acceptGoods(uint256) external pure {
-        revert NotImplemented();
+    function acceptGoods(uint256 dealId) external nonReentrant {
+        Deal storage d = _dealIn(dealId, DealState.Shipped);
+        if (msg.sender != d.terms.buyer) revert Unauthorized(msg.sender);
+        _releaseToSupplier(dealId, d);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -361,6 +366,23 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         IERC20(t.token).safeTransferFrom(msg.sender, address(this), t.balanceAmount);
     }
 
+    /// @dev Pays the balance minus its fee to the supplier, earns both fees, releases the bond.
+    function _releaseToSupplier(uint256 dealId, Deal storage d) private {
+        DealTerms storage t = d.terms;
+        uint256 amount = d.balanceHeld;
+        uint256 balanceFee = _fee(amount, t.feeBps);
+        uint256 earned = balanceFee + d.advanceFeeHeld;
+
+        d.state = DealState.Released;
+        d.balanceHeld = 0;
+        d.advanceFeeHeld = 0;
+        accruedFees[t.token] += earned;
+        emit Released(dealId, amount - balanceFee, earned);
+
+        IERC20(t.token).safeTransfer(t.supplier, amount - balanceFee);
+        if (t.bonder != address(0)) _settleBond(dealId, d, BondSettlement.Release, 0);
+    }
+
     function _attestationDigest(
         uint256 dealId,
         AttestationKind kind,
@@ -426,9 +448,13 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         return period >= WasitTypes.MIN_PERIOD && period <= WasitTypes.MAX_PERIOD;
     }
 
-    /// @dev Advance fee, rounded down (ADR-018).
+    /// @dev Protocol fee on `amount`, rounded down (ADR-018).
+    function _fee(uint256 amount, uint16 feeBps) private pure returns (uint256) {
+        return amount * feeBps / WasitTypes.BPS;
+    }
+
     function _advanceFee(DealTerms storage t) private view returns (uint256) {
-        return uint256(t.advanceAmount) * t.feeBps / WasitTypes.BPS;
+        return _fee(t.advanceAmount, t.feeBps);
     }
 
     /// @dev What the supplier receives from the advance and what the bond covers.

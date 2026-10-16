@@ -42,7 +42,8 @@ interface IWasitEscrow {
     event Disputed(uint256 indexed dealId, bytes32 reasonHash);
     /// @notice The arbitration period ended without a ruling; the balance is released to the supplier.
     event DisputeLapsed(uint256 indexed dealId);
-    /// @notice The balance was released to the supplier.
+    /// @notice The balance was released to the supplier. `fee` is everything the protocol earned on
+    ///         the deal (held advance fee + balance fee).
     event Released(uint256 indexed dealId, uint256 toSupplier, uint256 fee);
     /// @notice The arbiter ruled.
     event Resolved(
