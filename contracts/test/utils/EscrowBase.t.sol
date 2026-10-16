@@ -49,6 +49,17 @@ abstract contract EscrowBase is Base {
         _attest(dealId, AttestationKind.ReadyInspected, inspectorKey);
     }
 
+    function _balanceFunded(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _goodsReady(t);
+        vm.prank(t.buyer);
+        escrow.fundBalance(dealId);
+    }
+
+    function _shipped(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _balanceFunded(t);
+        _attest(dealId, AttestationKind.Shipped, carrierKey);
+    }
+
     function _evidence(uint256 dealId, AttestationKind kind) internal pure returns (bytes32) {
         return keccak256(abi.encode("evidence", dealId, kind));
     }

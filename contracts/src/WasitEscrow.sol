@@ -181,13 +181,18 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function fundBalance(uint256) external pure {
-        revert NotImplemented();
+    function fundBalance(uint256 dealId) external nonReentrant {
+        _fundBalance(dealId);
     }
 
     /// @inheritdoc IWasitEscrow
-    function fundBalanceWithPermit(uint256, uint256, uint8, bytes32, bytes32) external pure {
-        revert NotImplemented();
+    function fundBalanceWithPermit(uint256 dealId, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+        nonReentrant
+    {
+        DealTerms storage t = _deals[dealId].terms;
+        _tryPermit(t.token, t.balanceAmount, deadline, v, r, s);
+        _fundBalance(dealId);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -339,6 +344,21 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         IERC20 token = IERC20(t.token);
         token.safeTransferFrom(msg.sender, t.supplier, net);
         if (fee != 0) token.safeTransferFrom(msg.sender, address(this), fee);
+    }
+
+    function _fundBalance(uint256 dealId) private {
+        Deal storage d = _dealIn(dealId, DealState.GoodsReady);
+        DealTerms storage t = d.terms;
+        if (msg.sender != t.buyer) revert Unauthorized(msg.sender);
+        uint256 due = uint256(d.readyAt) + t.balanceWindow;
+        if (block.timestamp > due) revert DeadlinePassed(due);
+
+        d.state = DealState.BalanceFunded;
+        d.balanceFundedAt = uint64(block.timestamp);
+        d.balanceHeld = t.balanceAmount;
+        emit BalanceFunded(dealId, t.balanceAmount);
+
+        IERC20(t.token).safeTransferFrom(msg.sender, address(this), t.balanceAmount);
     }
 
     function _attestationDigest(
