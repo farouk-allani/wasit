@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {WasitEscrow} from "../../src/WasitEscrow.sol";
 import {IAdvanceBond} from "../../src/interfaces/IAdvanceBond.sol";
-import {DealTerms} from "../../src/libraries/WasitTypes.sol";
+import {BondStatus, DealTerms} from "../../src/libraries/WasitTypes.sol";
 import {Base} from "./Base.t.sol";
 
 /// @notice Deploys the escrow against the mock bond and drives deals through their states.
@@ -26,6 +26,22 @@ abstract contract EscrowBase is Base {
     function _create(DealTerms memory t) internal returns (uint256 dealId) {
         vm.prank(t.buyer);
         dealId = escrow.createDeal(t);
+    }
+
+    /// @dev Created + supplier accepted + arbiter accepted + (mock) bond Active at the required ratio.
+    function _accepted(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _create(t);
+        vm.prank(t.supplier);
+        escrow.accept(dealId);
+        vm.prank(t.arbiter);
+        escrow.acceptArbiter(dealId);
+        if (t.bonder != address(0)) bond.setBond(dealId, t.bonder, BondStatus.Active, t.bondRatioBps);
+    }
+
+    function _advancePaid(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _accepted(t);
+        vm.prank(t.buyer);
+        escrow.fundAdvance(dealId);
     }
 
     /// @dev 0.5% of the default 3,000 advance.
