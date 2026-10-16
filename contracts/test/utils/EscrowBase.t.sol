@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {WasitEscrow} from "../../src/WasitEscrow.sol";
 import {IAdvanceBond} from "../../src/interfaces/IAdvanceBond.sol";
-import {BondStatus, DealTerms} from "../../src/libraries/WasitTypes.sol";
+import {AttestationKind, BondStatus, DealTerms} from "../../src/libraries/WasitTypes.sol";
 import {Base} from "./Base.t.sol";
 
 /// @notice Deploys the escrow against the mock bond and drives deals through their states.
@@ -42,6 +42,25 @@ abstract contract EscrowBase is Base {
         dealId = _accepted(t);
         vm.prank(t.buyer);
         escrow.fundAdvance(dealId);
+    }
+
+    function _goodsReady(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _advancePaid(t);
+        _attest(dealId, AttestationKind.ReadyInspected, inspectorKey);
+    }
+
+    function _evidence(uint256 dealId, AttestationKind kind) internal pure returns (bytes32) {
+        return keccak256(abi.encode("evidence", dealId, kind));
+    }
+
+    /// @dev Signs with `key` for the deal's current nonce, issued now, and submits as the keeper.
+    function _attest(uint256 dealId, AttestationKind kind, uint256 key) internal {
+        bytes32 evidence = _evidence(dealId, kind);
+        uint64 issuedAt = uint64(block.timestamp);
+        uint256 nonce = escrow.getDeal(dealId).attestationNonce;
+        bytes memory sig = _sign(key, _attestationDigest(address(escrow), dealId, kind, evidence, issuedAt, nonce));
+        vm.prank(keeper);
+        escrow.submitAttestation(dealId, kind, evidence, issuedAt, sig);
     }
 
     /// @dev 0.5% of the default 3,000 advance.
