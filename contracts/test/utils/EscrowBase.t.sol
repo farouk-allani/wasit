@@ -60,6 +60,12 @@ abstract contract EscrowBase is Base {
         _attest(dealId, AttestationKind.Shipped, carrierKey);
     }
 
+    function _disputed(DealTerms memory t) internal returns (uint256 dealId) {
+        dealId = _shipped(t);
+        vm.prank(t.buyer);
+        escrow.dispute(dealId, keccak256("goods do not match the sample"));
+    }
+
     function _evidence(uint256 dealId, AttestationKind kind) internal pure returns (bytes32) {
         return keccak256(abi.encode("evidence", dealId, kind));
     }
