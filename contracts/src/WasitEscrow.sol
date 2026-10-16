@@ -221,13 +221,46 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function claimSupplierDefault(uint256) external pure {
-        revert NotImplemented();
+    function claimSupplierDefault(uint256 dealId) external nonReentrant {
+        Deal storage d = _deals[dealId];
+        DealTerms storage t = d.terms;
+        uint256 deadline;
+        if (d.state == DealState.AdvancePaid) {
+            deadline = uint256(d.advancePaidAt) + t.productionPeriod;
+        } else if (d.state == DealState.BalanceFunded) {
+            deadline = uint256(d.balanceFundedAt) + t.shippingPeriod;
+        } else {
+            revert InvalidState(dealId, d.state);
+        }
+        if (block.timestamp <= deadline) revert DeadlineNotReached(deadline);
+
+        uint256 refund = uint256(d.balanceHeld) + d.advanceFeeHeld;
+        bool bonded = t.bonder != address(0);
+        uint256 claimAmount = bonded ? _netAdvance(t) : 0;
+        d.state = DealState.SupplierDefaulted;
+        d.balanceHeld = 0;
+        d.advanceFeeHeld = 0;
+        emit SupplierDefaulted(dealId, refund, claimAmount);
+
+        // Escrowed money first: it must never depend on the bond or its oracle.
+        if (refund != 0) IERC20(t.token).safeTransfer(t.buyer, refund);
+        if (bonded) _settleBond(dealId, d, BondSettlement.Claim, claimAmount);
     }
 
     /// @inheritdoc IWasitEscrow
-    function claimBuyerDefault(uint256) external pure {
-        revert NotImplemented();
+    function claimBuyerDefault(uint256 dealId) external nonReentrant {
+        Deal storage d = _dealIn(dealId, DealState.GoodsReady);
+        DealTerms storage t = d.terms;
+        uint256 due = uint256(d.readyAt) + t.balanceWindow;
+        if (block.timestamp <= due) revert DeadlineNotReached(due);
+
+        uint256 fee = d.advanceFeeHeld;
+        d.state = DealState.BuyerDefaulted;
+        d.advanceFeeHeld = 0;
+        accruedFees[t.token] += fee;
+        emit BuyerDefaulted(dealId, fee);
+
+        if (t.bonder != address(0)) _settleBond(dealId, d, BondSettlement.Release, 0);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -236,8 +269,23 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function retryBondSettlement(uint256) external pure {
-        revert NotImplemented();
+    /// @dev Calls the bond directly: if it still fails, the whole call reverts and the pending
+    ///      settlement stays recorded.
+    function retryBondSettlement(uint256 dealId) external nonReentrant {
+        Deal storage d = _deals[dealId];
+        BondSettlement action = d.bondPending;
+        if (action == BondSettlement.None) revert NoPendingBondSettlement(dealId);
+
+        d.bondPending = BondSettlement.None;
+        if (action == BondSettlement.Claim) {
+            uint256 amount = d.bondClaimAmount;
+            d.bondClaimAmount = 0;
+            uint256 paid = _bond.claim(dealId, amount, d.terms.buyer);
+            emit BondSettled(dealId, action, paid);
+        } else {
+            _bond.release(dealId);
+            emit BondSettled(dealId, action, 0);
+        }
     }
 
     /// @inheritdoc IWasitEscrow
