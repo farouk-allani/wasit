@@ -5,9 +5,8 @@ script = "script"
 out = "out"
 libs = ["node_modules"]
 solc_version = "0.8.28"
-# Conservative until ADR-012: Mezo's documented Hardhat example targets london.
-# Step 0.4.3 probes PUSH0 / MCOPY / TSTORE on testnet and may raise this.
-evm_version = "london"
+# ADR-012: PUSH0, MCOPY and TSTORE verified on Mezo testnet; OpenZeppelin 5.6 needs MCOPY.
+evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
 # Fork tests (test/fork/*, contracts named *ForkTest) need a live RPC; run them with
