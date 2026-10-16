@@ -1,0 +1,19 @@
+{
+  "name": "@wasit/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "lint": "forge fmt --check",
+    "fmt": "forge fmt"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.6.1",
+    "@pythnetwork/pyth-sdk-solidity": "4.3.1"
+  },
+  "devDependencies": {
+    "forge-std": "github:foundry-rs/forge-std#v1.17.0"
+  }
+}
