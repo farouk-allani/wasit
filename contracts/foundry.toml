@@ -1,0 +1,38 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["node_modules"]
+solc_version = "0.8.28"
+# Conservative until ADR-012: Mezo's documented Hardhat example targets london.
+# Step 0.4.3 probes PUSH0 / MCOPY / TSTORE on testnet and may raise this.
+evm_version = "london"
+optimizer = true
+optimizer_runs = 200
+# Fork tests (test/fork/*, contracts named *ForkTest) need a live RPC; run them with
+# FOUNDRY_PROFILE=fork.
+no_match_contract = "ForkTest$"
+# No filesystem access until deploy scripts need it (step 3.2 adds ../deployments).
+fs_permissions = []
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 64
+
+[profile.ci.fuzz]
+runs = 10000
+
+[profile.ci.invariant]
+runs = 256
+depth = 128
+
+[profile.fork]
+match_contract = "ForkTest$"
+no_match_contract = "^$"
+
+[rpc_endpoints]
+mezo_testnet = "${MEZO_TESTNET_RPC}"
