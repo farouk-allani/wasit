@@ -7,7 +7,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IAdvanceBond} from "./interfaces/IAdvanceBond.sol";
 import {IWasitEscrow} from "./interfaces/IWasitEscrow.sol";
-import {AttestationKind, Deal, DealState, DealTerms, WasitTypes} from "./libraries/WasitTypes.sol";
+import {AttestationKind, BondSettlement, Deal, DealState, DealTerms, WasitTypes} from "./libraries/WasitTypes.sol";
 
 /// @title WasitEscrow
 /// @notice Advance-payment protection for stablecoin trade. The advance goes straight to the
@@ -81,18 +81,32 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function accept(uint256) external pure {
-        revert NotImplemented();
+    function accept(uint256 dealId) external {
+        Deal storage d = _dealIn(dealId, DealState.Created);
+        if (msg.sender != d.terms.supplier) revert Unauthorized(msg.sender);
+        d.state = DealState.Accepted;
+        emit DealAccepted(dealId, msg.sender);
     }
 
     /// @inheritdoc IWasitEscrow
-    function acceptArbiter(uint256) external pure {
-        revert NotImplemented();
+    /// @dev A repeated call is a no-op.
+    function acceptArbiter(uint256 dealId) external {
+        Deal storage d = _deals[dealId];
+        if (d.state != DealState.Created && d.state != DealState.Accepted) revert InvalidState(dealId, d.state);
+        if (msg.sender != d.terms.arbiter) revert Unauthorized(msg.sender);
+        if (d.arbiterAccepted) return;
+        d.arbiterAccepted = true;
+        emit ArbiterAccepted(dealId, msg.sender);
     }
 
     /// @inheritdoc IWasitEscrow
-    function cancel(uint256) external pure {
-        revert NotImplemented();
+    function cancel(uint256 dealId) external nonReentrant {
+        Deal storage d = _deals[dealId];
+        if (d.state != DealState.Created && d.state != DealState.Accepted) revert InvalidState(dealId, d.state);
+        if (msg.sender != d.terms.buyer && msg.sender != d.terms.supplier) revert Unauthorized(msg.sender);
+        d.state = DealState.Cancelled;
+        emit DealCancelled(dealId, msg.sender, 0);
+        if (d.terms.bonder != address(0)) _settleBond(dealId, d, BondSettlement.Release, 0);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -235,6 +249,32 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     // ───────────────────────────── Internals ─────────────────────────────
+
+    function _dealIn(uint256 dealId, DealState expected) private view returns (Deal storage d) {
+        d = _deals[dealId];
+        if (d.state != expected) revert InvalidState(dealId, d.state);
+    }
+
+    /// @dev Calls the bond in try/catch so a bond or oracle failure never blocks the caller's exit.
+    ///      On failure the call is recorded for `retryBondSettlement` (ADR-007, ADR-019).
+    function _settleBond(uint256 dealId, Deal storage d, BondSettlement action, uint256 claimAmount) private {
+        if (action == BondSettlement.Claim) {
+            try _bond.claim(dealId, claimAmount, d.terms.buyer) returns (uint256 paid) {
+                emit BondSettled(dealId, action, paid);
+            } catch (bytes memory reason) {
+                d.bondPending = action;
+                d.bondClaimAmount = uint128(claimAmount);
+                emit BondSettlementFailed(dealId, action, reason);
+            }
+        } else {
+            try _bond.release(dealId) {
+                emit BondSettled(dealId, action, 0);
+            } catch (bytes memory reason) {
+                d.bondPending = action;
+                emit BondSettlementFailed(dealId, action, reason);
+            }
+        }
+    }
 
     /// @dev ARCHITECTURE §3 validation (ADR-017).
     function _validateTerms(DealTerms calldata t) private view {
