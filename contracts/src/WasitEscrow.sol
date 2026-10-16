@@ -38,6 +38,10 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         uint256 earned; // protocol fee kept
     }
 
+    /// @notice Gas that must be left before a bond call, so a caller cannot starve the call inside
+    ///         try/catch and leave the settlement pending on purpose (midpoint review F-1).
+    uint256 public constant BOND_CALL_GAS = 1_000_000;
+
     /// @notice EIP-712 type of the attestation an inspector or carrier signs.
     bytes32 public constant ATTESTATION_TYPEHASH =
         keccak256("Attestation(uint256 dealId,uint8 kind,bytes32 evidenceHash,uint64 issuedAt,uint256 nonce)");
@@ -139,7 +143,7 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         external
         nonReentrant
     {
-        DealTerms storage t = _deals[dealId].terms;
+        DealTerms storage t = _dealIn(dealId, DealState.Accepted).terms;
         _tryPermit(t.token, t.advanceAmount, deadline, v, r, s);
         _fundAdvance(dealId);
     }
@@ -196,7 +200,7 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         external
         nonReentrant
     {
-        DealTerms storage t = _deals[dealId].terms;
+        DealTerms storage t = _dealIn(dealId, DealState.GoodsReady).terms;
         _tryPermit(t.token, t.balanceAmount, deadline, v, r, s);
         _fundBalance(dealId);
     }
@@ -544,6 +548,7 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     /// @dev Calls the bond in try/catch so a bond or oracle failure never blocks the caller's exit.
     ///      On failure the call is recorded for `retryBondSettlement` (ADR-007, ADR-019).
     function _settleBond(uint256 dealId, Deal storage d, BondSettlement action, uint256 claimAmount) private {
+        if (gasleft() < BOND_CALL_GAS) revert InsufficientGasForBond();
         if (action == BondSettlement.Claim) {
             try _bond.claim(dealId, claimAmount, d.terms.buyer) returns (uint256 paid) {
                 emit BondSettled(dealId, action, paid);

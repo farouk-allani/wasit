@@ -112,6 +112,8 @@ interface IWasitEscrow {
     error NoPendingBondSettlement(uint256 dealId);
     /// @notice There are no fees to withdraw.
     error NothingToWithdraw();
+    /// @notice Too little gas left for a bond call; resend with a higher gas limit.
+    error InsufficientGasForBond();
 
     // ───────────────────────────── Deal lifecycle ─────────────────────────────
 
