@@ -313,8 +313,25 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function refundAndCancel(uint256) external pure {
-        revert NotImplemented();
+    function refundAndCancel(uint256 dealId) external nonReentrant {
+        Deal storage d = _deals[dealId];
+        if (d.state != DealState.AdvancePaid && d.state != DealState.GoodsReady && d.state != DealState.BalanceFunded) {
+            revert InvalidState(dealId, d.state);
+        }
+        DealTerms storage t = d.terms;
+        if (msg.sender != t.supplier) revert Unauthorized(msg.sender);
+
+        uint256 net = _netAdvance(t);
+        uint256 fromEscrow = uint256(d.balanceHeld) + d.advanceFeeHeld;
+        d.state = DealState.Cancelled;
+        d.balanceHeld = 0;
+        d.advanceFeeHeld = 0;
+        emit DealCancelled(dealId, msg.sender, net + fromEscrow);
+
+        IERC20 token = IERC20(t.token);
+        token.safeTransferFrom(msg.sender, t.buyer, net);
+        if (fromEscrow != 0) token.safeTransfer(t.buyer, fromEscrow);
+        if (t.bonder != address(0)) _settleBond(dealId, d, BondSettlement.Release, 0);
     }
 
     /// @inheritdoc IWasitEscrow
