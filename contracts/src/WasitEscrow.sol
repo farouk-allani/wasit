@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IAdvanceBond} from "./interfaces/IAdvanceBond.sol";
@@ -138,8 +139,45 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function submitAttestation(uint256, AttestationKind, bytes32, uint64, bytes calldata) external pure {
-        revert NotImplemented();
+    function submitAttestation(
+        uint256 dealId,
+        AttestationKind kind,
+        bytes32 evidenceHash,
+        uint64 issuedAt,
+        bytes calldata signature
+    ) external {
+        Deal storage d = _deals[dealId];
+        DealTerms storage t = d.terms;
+        address signer;
+        uint64 previous;
+        uint256 deadline;
+        if (kind == AttestationKind.ReadyInspected) {
+            if (d.state != DealState.AdvancePaid) revert InvalidState(dealId, d.state);
+            signer = t.inspector;
+            previous = d.advancePaidAt;
+            deadline = uint256(previous) + t.productionPeriod;
+        } else if (kind == AttestationKind.Shipped) {
+            if (d.state != DealState.BalanceFunded) revert InvalidState(dealId, d.state);
+            signer = t.carrier;
+            previous = d.balanceFundedAt;
+            deadline = uint256(previous) + t.shippingPeriod;
+        } else {
+            revert InvalidAttestationKind(kind);
+        }
+        if (block.timestamp > deadline) revert DeadlinePassed(deadline);
+        if (issuedAt > block.timestamp || issuedAt < previous) revert InvalidIssuedAt(issuedAt);
+        bytes32 digest = _attestationDigest(dealId, kind, evidenceHash, issuedAt, d.attestationNonce);
+        if (!SignatureChecker.isValidSignatureNow(signer, digest, signature)) revert InvalidSignature();
+
+        d.attestationNonce += 1;
+        if (kind == AttestationKind.ReadyInspected) {
+            d.state = DealState.GoodsReady;
+            d.readyAt = uint64(block.timestamp);
+        } else {
+            d.state = DealState.Shipped;
+            d.shippedAt = uint64(block.timestamp);
+        }
+        emit Attested(dealId, kind, signer, evidenceHash, issuedAt);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -257,8 +295,14 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
     }
 
     /// @inheritdoc IWasitEscrow
-    function attestationDigest(uint256, AttestationKind, bytes32, uint64, uint256) external pure returns (bytes32) {
-        revert NotImplemented();
+    function attestationDigest(
+        uint256 dealId,
+        AttestationKind kind,
+        bytes32 evidenceHash,
+        uint64 issuedAt,
+        uint256 nonce
+    ) external view returns (bytes32) {
+        return _attestationDigest(dealId, kind, evidenceHash, issuedAt, nonce);
     }
 
     /// @inheritdoc IWasitEscrow
@@ -295,6 +339,18 @@ contract WasitEscrow is IWasitEscrow, Ownable2Step, Pausable, ReentrancyGuard, E
         IERC20 token = IERC20(t.token);
         token.safeTransferFrom(msg.sender, t.supplier, net);
         if (fee != 0) token.safeTransferFrom(msg.sender, address(this), fee);
+    }
+
+    function _attestationDigest(
+        uint256 dealId,
+        AttestationKind kind,
+        bytes32 evidenceHash,
+        uint64 issuedAt,
+        uint256 nonce
+    ) private view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(abi.encode(ATTESTATION_TYPEHASH, dealId, uint8(kind), evidenceHash, issuedAt, nonce))
+        );
     }
 
     /// @dev A permit can be front-run by anyone who saw it; ignore failure and let the transfer
