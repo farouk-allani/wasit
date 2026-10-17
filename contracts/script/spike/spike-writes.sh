@@ -2,17 +2,21 @@
 # Phase 0 spike, write part: a few real Mezo testnet transactions (about 0.0002 BTC plus gas).
 # Needs Farouk's approval before running. Uses cast, not forge script: forge simulates on a local
 # fork first, and a local fork cannot execute Mezo's BTC precompile. Run from contracts/:
-#   export MEZO_TESTNET_RPC=https://rpc.test.mezo.org
-#   ./script/spike/spike-writes.sh --account deployer          # Foundry keystore
+#   ./script/spike/spike-writes.sh                              # account 0 of WASIT_TESTNET_MNEMONIC
+#   ./script/spike/spike-writes.sh --account deployer           # Foundry keystore
 #   ./script/spike/spike-writes.sh --private-key "$DEPLOYER_PRIVATE_KEY"
+# MEZO_TESTNET_RPC and WASIT_TESTNET_MNEMONIC come from contracts/.env (see .env.example).
 set -euo pipefail
 
-[ $# -ge 1 ] || { sed -n '2,7p' "$0"; exit 2; }
+# tr: .env may have CRLF line endings when edited on Windows
+if [ -f .env ]; then set -a; . <(tr -d '\r' < .env); set +a; fi
+if [ $# -ge 1 ]; then SIGNER=("$@")
+elif [ -n "${WASIT_TESTNET_MNEMONIC:-}" ]; then SIGNER=(--mnemonic "$WASIT_TESTNET_MNEMONIC" --mnemonic-index 0)
+else sed -n '2,8p' "$0"; exit 2; fi
 RPC="${MEZO_TESTNET_RPC:?set MEZO_TESTNET_RPC}"
 chain=$(cast chain-id --rpc-url "$RPC")
 [ "$chain" = "31611" ] || { echo "refusing to run on chain $chain (Mezo testnet is 31611)" >&2; exit 1; }
 
-SIGNER=("$@")
 BTC=0x7b7C000000000000000000000000000000000000
 MUSD=0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503
 ROUTER=0x9a1ff7FE3a0F69959A3fBa1F1e5ee18e1A9CD7E9
