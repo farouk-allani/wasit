@@ -123,7 +123,8 @@ function apply(deal: DealView, log: DealLog) {
     event: log.eventName,
     tx,
     block: log.blockNumber,
-    at: log.blockTimestamp,
+    // 0 is Mezo's placeholder for "not provided" (VERIFIED-FACTS), never a real block time
+    at: log.blockTimestamp ? log.blockTimestamp : undefined,
   };
   deal.timeline.push(entry);
   const money = (label: string, amount: bigint, asset: LedgerEntry["asset"] = "MUSD") => {
