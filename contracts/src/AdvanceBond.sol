@@ -263,6 +263,9 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
         ISwapAdapter swap = b.swap;
         uint256 musdBefore = musd.balanceOf(address(this));
         btc.forceApprove(address(swap), btcSold);
+        // The balance delta is the safety check itself: every function that moves MUSD out is
+        // nonReentrant, so a reentrant call can only add MUSD, which is then counted (ADR-021).
+        // slither-disable-next-line reentrancy-balance,unused-return
         swap.swapExactIn(address(btc), address(musd), btcSold, minOut, address(this));
         btc.forceApprove(address(swap), 0);
         received = musd.balanceOf(address(this)) - musdBefore;
