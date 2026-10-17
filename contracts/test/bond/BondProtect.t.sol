@@ -179,7 +179,7 @@ contract BondProtectTest is BondBase {
         try advanceBond.protect(id) {
             Bond memory b = advanceBond.bondOf(id);
             uint256 sold = 0.06e18 - b.btcHeld;
-            assertGe(b.musdHeld * 10_000, sold * price / 1e18 * 9_400, "received >= oracle value - 6%");
+            assertGe(b.musdHeld, sold * price / 1e18 * 9_400 / 10_000, "received >= oracle value - 6%");
             assertLe(poolSlippage, 600, "only succeeds within tolerance");
         } catch {
             assertGt(poolSlippage, 600, "only fails beyond tolerance");

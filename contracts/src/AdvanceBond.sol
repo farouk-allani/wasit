@@ -22,9 +22,6 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    /// @dev Temporary: functions of later build steps revert until they are implemented.
-    error NotImplemented();
-
     /// @notice BTC ERC-20 (on Mezo: the native-BTC precompile).
     IERC20 public immutable btc;
     /// @notice Settlement stablecoin (MUSD).
@@ -167,8 +164,27 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
     // ───────────────────────────── Escrow actions ─────────────────────────────
 
     /// @inheritdoc IAdvanceBond
-    function claim(uint256, uint256, address) external view onlyEscrow returns (uint256) {
-        revert NotImplemented();
+    /// @dev Reverts (and the escrow records the claim for retry) if BTC must be sold while the
+    ///      oracle is stale or the pool is worse than the bond's slippage tolerance. A claim that
+    ///      MUSD already covers needs no price.
+    function claim(uint256 dealId, uint256 amount, address to)
+        external
+        onlyEscrow
+        nonReentrant
+        returns (uint256 paid)
+    {
+        Bond storage b = _bonds[dealId];
+        if (!_live(b.status)) revert NoActiveBond(dealId);
+        uint256 owed = amount < b.covered ? amount : b.covered;
+        if (b.musdHeld < owed) _sellBtcFor(b, owed - b.musdHeld, _price(b.oracle));
+
+        paid = b.musdHeld < owed ? b.musdHeld : owed;
+        b.musdHeld -= uint128(paid);
+        emit BondClaimed(dealId, to, amount, paid);
+        if (paid < owed) emit BondShortfall(dealId, amount, paid);
+
+        musd.safeTransfer(to, paid);
+        _closeToBonder(dealId, b, BondStatus.Claimed);
     }
 
     /// @inheritdoc IAdvanceBond
