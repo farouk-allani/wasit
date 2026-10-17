@@ -48,6 +48,8 @@ interface IAdvanceBond {
     error ZeroAmount();
     /// @notice A config value is out of bounds.
     error InvalidConfig();
+    /// @notice The oracle returned a zero price.
+    error InvalidPrice();
 
     /// @notice Locks `btcAmount` BTC (pulled from the caller) for `dealId`.
     /// @dev Only the named bonder, while the deal is Created or Accepted. Snapshots the oracle,
