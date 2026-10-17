@@ -13,8 +13,10 @@ import {ISkipAggregator, SkipOracleAdapter} from "../src/oracles/SkipOracleAdapt
 import {IMezoRouter, MezoRouterAdapter} from "../src/swap/MezoRouterAdapter.sol";
 
 /// @notice Deploys Wasit on Mezo testnet with the Skip oracle (the live deployment).
-///   Dry run:   forge script script/Deploy.s.sol --rpc-url $MEZO_TESTNET_RPC
-///   Broadcast: add --broadcast and a signer (Farouk's approval required).
+///   Dry run:   forge script script/Deploy.s.sol --rpc-url mezo_testnet
+///   Broadcast: add --broadcast (Farouk's approval required).
+/// The signer is account 0 of WASIT_TESTNET_MNEMONIC when it is set (contracts/.env, see
+/// .env.example), otherwise whatever forge is given (--account, --private-key, ...) (ADR-022).
 /// Network values come from deployments/config/mezo-testnet.json (VERIFIED-FACTS). The owner and fee
 /// recipient default to the deployer and can be set with WASIT_OWNER / WASIT_FEE_RECIPIENT.
 /// No constructor calls the BTC or Skip precompiles, so the script simulates on a fork (ADR-015).
@@ -58,7 +60,9 @@ contract Deploy is Script {
         Config memory c = loadConfig("mezo-testnet");
         if (block.chainid != c.chainId && block.chainid != 31_337) revert WrongChain(block.chainid);
 
-        vm.startBroadcast();
+        string memory mnemonic = vm.envOr("WASIT_TESTNET_MNEMONIC", string(""));
+        if (bytes(mnemonic).length != 0) vm.startBroadcast(vm.deriveKey(mnemonic, 0));
+        else vm.startBroadcast();
         (, address deployer,) = vm.readCallers();
         c.owner = vm.envOr("WASIT_OWNER", deployer);
         c.feeRecipient = vm.envOr("WASIT_FEE_RECIPIENT", deployer);
