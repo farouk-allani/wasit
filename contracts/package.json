@@ -7,7 +7,9 @@
     "build": "forge build",
     "test": "forge test",
     "lint": "forge fmt --check",
-    "fmt": "forge fmt"
+    "fmt": "forge fmt",
+    "snapshot": "forge snapshot --no-match-test \"testFuzz_|invariant_\"",
+    "coverage": "forge coverage --report summary --no-match-coverage \"(test|script)/\""
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.6.1",
