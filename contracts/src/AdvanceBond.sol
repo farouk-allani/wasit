@@ -143,8 +143,25 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
     }
 
     /// @inheritdoc IAdvanceBond
-    function protect(uint256) external pure {
-        revert NotImplemented();
+    /// @dev Only while the advance is outstanding (AdvancePaid … Disputed): before that nothing is
+    ///      at risk. Sells enough BTC to hold the covered amount in MUSD even at the bond's maximum
+    ///      slippage, or all of it if that is not enough. Status → Protected.
+    function protect(uint256 dealId) external nonReentrant {
+        Bond storage b = _bonds[dealId];
+        if (b.status != BondStatus.Active) revert NoActiveBond(dealId);
+        (,,, DealState state) = escrow.bondTerms(dealId);
+        if (!_advanceOutstanding(state)) revert DealNotOpenForBond(dealId);
+
+        uint256 price = _price(b.oracle);
+        uint256 coverageBefore = _coverage(b.btcHeld, b.musdHeld, b.covered, price);
+        if (coverageBefore >= b.protectRatioBps) {
+            revert CoverageAboveProtectRatio(coverageBefore, b.protectRatioBps);
+        }
+
+        b.status = BondStatus.Protected;
+        uint256 shortBy = b.covered > b.musdHeld ? b.covered - b.musdHeld : 0;
+        (uint256 btcSold, uint256 received) = _sellBtcFor(b, shortBy, price);
+        emit BondProtected(dealId, btcSold, received, coverageBefore);
     }
 
     // ───────────────────────────── Escrow actions ─────────────────────────────
@@ -213,6 +230,30 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
         if (musdAmount != 0) musd.safeTransfer(b.bonder, musdAmount);
     }
 
+    /// @dev Sells the BTC needed to raise `musdWanted` at the bond's worst allowed slippage (capped at
+    ///      everything it holds), with `minOut` = oracle value minus that slippage. Measures the MUSD
+    ///      actually received instead of trusting the adapter's return value.
+    function _sellBtcFor(Bond storage b, uint256 musdWanted, uint256 price)
+        private
+        returns (uint256 btcSold, uint256 received)
+    {
+        uint256 keepBps = WasitTypes.BPS - b.maxSlippageBps;
+        btcSold = Math.mulDiv(musdWanted, 1e18 * WasitTypes.BPS, price * keepBps, Math.Rounding.Ceil);
+        if (btcSold > b.btcHeld) btcSold = b.btcHeld;
+        if (btcSold == 0) return (0, 0);
+        uint256 minOut = Math.mulDiv(btcSold, price, 1e18) * keepBps / WasitTypes.BPS;
+
+        b.btcHeld -= uint128(btcSold);
+        ISwapAdapter swap = b.swap;
+        uint256 musdBefore = musd.balanceOf(address(this));
+        btc.forceApprove(address(swap), btcSold);
+        swap.swapExactIn(address(btc), address(musd), btcSold, minOut, address(this));
+        btc.forceApprove(address(swap), 0);
+        received = musd.balanceOf(address(this)) - musdBefore;
+        if (received < minOut) revert SwapOutputTooLow(received, minOut);
+        b.musdHeld += received.toUint128();
+    }
+
     /// @dev `(btc × price + musd) × 10_000 / covered`, with MUSD valued at 1 USD.
     function _coverage(uint256 btcAmount, uint256 musdAmount, uint256 covered, uint256 price)
         private
@@ -243,6 +284,10 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
 
     function _beforeAdvance(DealState state) private pure returns (bool) {
         return state == DealState.Created || state == DealState.Accepted;
+    }
+
+    function _advanceOutstanding(DealState state) private pure returns (bool) {
+        return uint8(state) >= uint8(DealState.AdvancePaid) && uint8(state) <= uint8(DealState.Disputed);
     }
 
     function _setOracle(IPriceOracle oracle_) private {
