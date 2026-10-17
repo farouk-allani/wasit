@@ -9,6 +9,8 @@ solc_version = "0.8.28"
 evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
+# Third-party code (e.g. Pyth's MockPyth) is not ours to fix.
+ignored_warnings_from = ["node_modules"]
 # Fork tests (test/fork/*, contracts named *ForkTest) need a live RPC; run them with
 # FOUNDRY_PROFILE=fork.
 no_match_contract = "ForkTest$"
