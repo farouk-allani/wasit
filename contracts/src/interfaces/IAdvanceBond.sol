@@ -50,6 +50,8 @@ interface IAdvanceBond {
     error InvalidConfig();
     /// @notice The oracle returned a zero price.
     error InvalidPrice();
+    /// @notice The swap delivered less MUSD than the oracle-bounded minimum.
+    error SwapOutputTooLow(uint256 received, uint256 minOut);
 
     /// @notice Locks `btcAmount` BTC (pulled from the caller) for `dealId`.
     /// @dev Only the named bonder, while the deal is Created or Accepted. Snapshots the oracle,
