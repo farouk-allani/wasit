@@ -6,6 +6,9 @@ import {IAdvanceBond} from "../src/interfaces/IAdvanceBond.sol";
 import {BondStatus} from "../src/libraries/WasitTypes.sol";
 import {MockAdvanceBond} from "./mocks/MockAdvanceBond.sol";
 import {MockERC1271Wallet} from "./mocks/MockERC1271Wallet.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockOracle} from "./mocks/MockOracle.sol";
+import {MockSwap} from "./mocks/MockSwap.sol";
 import {Base} from "./utils/Base.t.sol";
 
 /// @notice Checks the test helpers themselves, so escrow tests can rely on them.
@@ -55,5 +58,41 @@ contract FixturesTest is Base {
         bond.claim(1, 1, buyer);
         vm.expectRevert(MockAdvanceBond.MockFailure.selector);
         bond.release(1);
+    }
+
+    function test_mockOracleReturnsAndGoesStale() public {
+        MockOracle oracle = new MockOracle(80_000e18);
+        (uint256 price, uint256 updatedAt) = oracle.btcUsd();
+        assertEq(price, 80_000e18);
+        assertEq(updatedAt, block.timestamp);
+        assertFalse(oracle.isSimulated());
+        oracle.setStale(true);
+        vm.expectRevert(MockOracle.StalePrice.selector);
+        oracle.btcUsd();
+    }
+
+    function test_mockSwapAppliesRateAndSlippage() public {
+        MockERC20 btc = new MockERC20("BTC", "BTC", 18);
+        MockSwap swap = new MockSwap(80_000e18);
+        swap.setSlippage(100); // 1%
+        btc.mint(address(this), 1e18);
+        musd.mint(address(swap), 100_000e18);
+        btc.approve(address(swap), 1e18);
+
+        uint256 out = swap.swapExactIn(address(btc), address(musd), 0.5e18, 39_600e18, stranger);
+
+        assertEq(out, 39_600e18);
+        assertEq(musd.balanceOf(stranger), 39_600e18);
+        assertEq(btc.balanceOf(address(swap)), 0.5e18);
+    }
+
+    function test_mockSwapEnforcesMinOutAndFailure() public {
+        MockERC20 btc = new MockERC20("BTC", "BTC", 18);
+        MockSwap swap = new MockSwap(80_000e18);
+        vm.expectRevert(abi.encodeWithSelector(MockSwap.InsufficientOutput.selector, 80_000e18, 80_001e18));
+        swap.swapExactIn(address(btc), address(musd), 1e18, 80_001e18, stranger);
+        swap.setFail(true);
+        vm.expectRevert(MockSwap.MockSwapFailure.selector);
+        swap.swapExactIn(address(btc), address(musd), 1e18, 0, stranger);
     }
 }
