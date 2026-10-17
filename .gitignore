@@ -8,6 +8,7 @@ contracts/cache/
 contracts/broadcast/*/31612/
 contracts/broadcast/*/31337/
 contracts/broadcast/**/dry-run/
+deployments/*.dry-run.json
 lcov.info
 
 # Web
