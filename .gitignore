@@ -12,6 +12,7 @@ deployments/*.dry-run.json
 lcov.info
 
 # Web
+dist/
 .next/
 out/
 .vercel/

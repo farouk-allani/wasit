@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    // Passport's types pull in raw TypeScript from @mezo-org/orangekit-smart-account/src, which tsc
+    // checks with our options (skipLibCheck covers .d.ts only) and which uses non-type-only imports
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src", "vite.config.ts"]
+}
