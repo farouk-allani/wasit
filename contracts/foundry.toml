@@ -14,8 +14,8 @@ ignored_warnings_from = ["node_modules"]
 # Fork tests (test/fork/*, contracts named *ForkTest) need a live RPC; run them with
 # FOUNDRY_PROFILE=fork.
 no_match_contract = "ForkTest$"
-# No filesystem access until deploy scripts need it (step 3.2 adds ../deployments).
-fs_permissions = []
+# Deploy scripts read deployments/config/ and write deployments/<network>.json.
+fs_permissions = [{ access = "read-write", path = "../deployments" }]
 
 [profile.default.fuzz]
 runs = 256
