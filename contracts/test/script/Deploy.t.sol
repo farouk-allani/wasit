@@ -56,4 +56,17 @@ contract DeployScriptTest is Test {
         assertEq(d.bond.maxSlippageBps(), 600);
         assertEq(d.deployBlock, block.number);
     }
+
+    function test_run_signsWithMnemonicAccountZero() public {
+        string memory mnemonic = "test test test test test test test test test test test junk";
+        vm.setEnv("WASIT_TESTNET_MNEMONIC", mnemonic);
+        address signer = vm.addr(vm.deriveKey(mnemonic, 0));
+        uint64 nonce = vm.getNonce(signer);
+
+        Deploy.Deployment memory d = script.run();
+
+        assertEq(address(d.oracle), vm.computeCreateAddress(signer, nonce));
+        assertEq(address(d.swapAdapter), vm.computeCreateAddress(signer, nonce + 1));
+        assertEq(address(d.escrow), vm.computeCreateAddress(signer, nonce + 3));
+    }
 }
