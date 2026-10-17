@@ -74,6 +74,23 @@ contract BondClaimTest is BondBase {
         assertEq(musd.balanceOf(buyer), buyerStart - ADVANCE + ADVANCE_FEE + 1_782e18);
     }
 
+    /// Review P-1: after a crash protection sold every BTC, a stale oracle must not block paying out
+    /// the MUSD the bond already holds.
+    function test_P1_emptyBtcClaimNeedsNoPrice() public {
+        _setPrice(30_000e18);
+        advanceBond.protect(id); // sells all 0.06 BTC for 1,782 MUSD
+        assertEq(advanceBond.bondOf(id).btcHeld, 0);
+        oracle.setStale(true);
+        _missReadyBy();
+
+        vm.expectEmit(address(advanceBond));
+        emit IAdvanceBond.BondShortfall(id, NET_ADVANCE, 1_782e18);
+        escrow.claimSupplierDefault(id);
+
+        assertEq(uint8(escrow.getDeal(id).bondPending), uint8(BondSettlement.None), "paid at once");
+        assertEq(musd.balanceOf(buyer), buyerStart - ADVANCE + ADVANCE_FEE + 1_782e18);
+    }
+
     function test_supplierDefault_staleOracleThenRetry() public {
         oracle.setStale(true);
         _missReadyBy();

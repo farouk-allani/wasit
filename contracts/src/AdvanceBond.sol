@@ -166,7 +166,7 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
     /// @inheritdoc IAdvanceBond
     /// @dev Reverts (and the escrow records the claim for retry) if BTC must be sold while the
     ///      oracle is stale or the pool is worse than the bond's slippage tolerance. A claim that
-    ///      MUSD already covers needs no price.
+    ///      MUSD already covers, or a bond with no BTC left, needs no price (review P-1).
     function claim(uint256 dealId, uint256 amount, address to)
         external
         onlyEscrow
@@ -176,7 +176,7 @@ contract AdvanceBond is IAdvanceBond, Ownable2Step, ReentrancyGuard {
         Bond storage b = _bonds[dealId];
         if (!_live(b.status)) revert NoActiveBond(dealId);
         uint256 owed = amount < b.covered ? amount : b.covered;
-        if (b.musdHeld < owed) _sellBtcFor(b, owed - b.musdHeld, _price(b.oracle));
+        if (b.musdHeld < owed && b.btcHeld != 0) _sellBtcFor(b, owed - b.musdHeld, _price(b.oracle));
 
         paid = b.musdHeld < owed ? b.musdHeld : owed;
         b.musdHeld -= uint128(paid);
