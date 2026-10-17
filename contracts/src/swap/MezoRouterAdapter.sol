@@ -65,6 +65,8 @@ contract MezoRouterAdapter is ISwapAdapter {
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).forceApprove(address(router), amountIn);
         uint256 before = IERC20(tokenOut).balanceOf(recipient);
+        // Measured, not trusted: the router's return value is ignored on purpose (ADR-021).
+        // slither-disable-next-line reentrancy-balance,unused-return
         router.swapExactTokensForTokens(amountIn, minOut, _route(tokenIn, tokenOut), recipient, block.timestamp);
         IERC20(tokenIn).forceApprove(address(router), 0);
 
