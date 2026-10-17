@@ -203,6 +203,13 @@ describe("reduceDeals", () => {
     expect(deal?.timeline.map((t) => t.event)).toEqual(all.map((l) => l.eventName));
   });
 
+  it("treats a 0 block time as unknown", () => {
+    const { logs } = opened(7n);
+    const zero = logs.map((l) => ({ ...l, blockTimestamp: 0n }));
+    const deal = reduceDeals(zero).get(7n);
+    expect(deal?.timeline.every((t) => t.at === undefined)).toBe(true);
+  });
+
   it("ignores config events and logs of unknown deals", () => {
     const log = chain();
     const deals = reduceDeals([
