@@ -163,7 +163,7 @@
 
 @utility amount {
   @apply font-sans tabular-nums;
-  font-feature-settings: "tnum", "zero";
+  font-feature-settings: "tnum";
 }
 
 @media (prefers-reduced-motion: reduce) {

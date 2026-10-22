@@ -1,25 +1,28 @@
-import { ArrowLeftRight, Bitcoin, FileSignature, Stamp, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
+import { Icon3D, type Icon3DName } from "../icons/Icon3D";
 import { exampleDeal, params, percent, usd } from "../params";
 import { Reveal } from "../Reveal";
 
-const STEPS: { icon: LucideIcon; title: string; body: string }[] = [
+const STEPS: { icon: Icon3DName; title: string; body: string }[] = [
   {
-    icon: FileSignature,
+    icon: "contract",
     title: "Agree the terms",
     body: "Buyer and supplier fix the amounts, the advance share, who attests, every deadline, the challenge window and the arbiter before any money moves.",
   },
   {
-    icon: Bitcoin,
+    icon: "coins-btc",
     title: "Advance, backed by BTC",
     body: "The buyer pays the advance in MUSD straight to the supplier. The supplier, or a sourcing agent who vouches for them, posts a BTC bond that backs it.",
   },
   {
-    icon: Stamp,
+    icon: "doc-check",
     title: "Signed attestations",
     body: "An inspector signs that the goods are ready, a carrier that they shipped. Each signature carries a fingerprint of the evidence file.",
   },
   {
-    icon: ArrowLeftRight,
+    icon: "swap",
     title: "Release or refund",
     body: "After the challenge window the balance goes to the supplier. A dispute goes to the named arbiter; if the supplier defaults, the buyer claims the bond.",
   },
@@ -36,41 +39,44 @@ export function HowItWorks() {
       className="theme-paper scroll-mt-20 py-24 sm:py-32"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal className="max-w-2xl space-y-5">
-          <p className="eyebrow">How it works</p>
-          <h2
-            id="how-title"
-            className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-[2.6rem]"
-          >
-            Every rule is fixed before the first dollar moves.
-          </h2>
-          <p className="text-[1.05rem] leading-relaxed text-muted-foreground">
-            Wasit is a set of contracts on Mezo, not a company holding your money. Funds move only
-            by the agreed rules: signatures from the named parties, the arbiter&apos;s ruling, or a
-            deadline in the terms passing.
-          </p>
-        </Reveal>
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2fr)] lg:gap-14">
+          <Reveal className="space-y-5 lg:pt-6">
+            <p className="eyebrow">How it works</p>
+            <h2
+              id="how-title"
+              className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-[2.4rem]"
+            >
+              Every rule is fixed before the first dollar moves.
+            </h2>
+            <p className="text-[1.05rem] leading-relaxed text-muted-foreground">
+              Wasit is a set of contracts on Mezo, not a company holding your money. Funds move only
+              by the agreed rules: signatures from the named parties, the arbiter&apos;s ruling, or
+              a deadline in the terms passing.
+            </p>
+            <Button asChild size="lg" className="mt-2">
+              <Link to="/deals/new">
+                Start a deal <ArrowRight aria-hidden className="rtl:-scale-x-100" />
+              </Link>
+            </Button>
+          </Reveal>
 
-        <ol className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 [&>li]:h-full">
-          {STEPS.map(({ icon: Icon, title, body }, i) => (
-            <li key={title}>
-              <Reveal delay={i * 100} className="h-full">
-                <div className="relative flex h-full flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-[0_1px_0_rgb(17_26_38/0.04),0_12px_32px_-24px_rgb(17_26_38/0.35)]">
-                  <span className="flex items-center justify-between">
-                    <span className="grid size-11 place-items-center rounded-lg bg-navy-900 text-gold-400">
-                      <Icon aria-hidden className="size-5" />
+          <ol className="grid gap-x-4 gap-y-8 pt-4 sm:grid-cols-2 xl:grid-cols-4 [&>li]:h-full">
+            {STEPS.map(({ icon, title, body }, i) => (
+              <li key={title}>
+                <Reveal delay={i * 100} className="h-full">
+                  <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card px-5 pt-8 pb-5 shadow-[0_1px_0_rgb(17_26_38/0.04),0_16px_40px_-28px_rgb(17_26_38/0.45)]">
+                    <span className="absolute -top-4 start-5 grid size-8 place-items-center rounded-full bg-gold-400 text-sm font-bold text-navy-950 shadow-[0_4px_12px_-4px_var(--gold-500)]">
+                      {i + 1}
                     </span>
-                    <span className="text-sm font-semibold tracking-[0.2em] text-muted-foreground font-stretch-expanded">
-                      0{i + 1}
-                    </span>
-                  </span>
-                  <h3 className="text-lg font-semibold">{title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-                </div>
-              </Reveal>
-            </li>
-          ))}
-        </ol>
+                    <h3 className="text-[1.05rem] font-semibold">{title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                    <Icon3D name={icon} className="mx-auto mt-auto size-24 pt-4" />
+                  </div>
+                </Reveal>
+              </li>
+            ))}
+          </ol>
+        </div>
 
         <Reveal className="mt-16">
           <figure className="rounded-2xl border border-border bg-card p-6 sm:p-8">
