@@ -34,14 +34,14 @@ const example = exampleDeal(10_000n, 3_000n, 15_000n);
 export function HowItWorks() {
   return (
     <section
-      id="how-it-works"
+      id="deal-flow"
       aria-labelledby="how-title"
       className="theme-paper scroll-mt-20 py-16 sm:py-20"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-14">
           <Reveal className="space-y-5 lg:pt-6">
-            <p className="eyebrow">How it works</p>
+            <p className="eyebrow">Four steps</p>
             <h2
               id="how-title"
               className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-[2.25rem]"

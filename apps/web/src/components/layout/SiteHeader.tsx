@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const marketingNav = [
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#deal-flow", label: "Deal flow" },
   { href: "/#protection", label: "Protection" },
   { href: "/#limits", label: "Limits" },
 ];
