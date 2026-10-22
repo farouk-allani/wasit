@@ -9,22 +9,22 @@ const STEPS: { icon: Icon3DName; title: string; body: string }[] = [
   {
     icon: "handshake",
     title: "Agree the terms",
-    body: "Buyer and supplier fix the amounts, the advance share, who attests, every deadline, the challenge window and the arbiter before any money moves.",
+    body: "Amounts, deadlines, who attests and the arbiter are fixed before any money moves.",
   },
   {
     icon: "money-bag",
     title: "Advance, backed by BTC",
-    body: "The buyer pays the advance in MUSD straight to the supplier. The supplier, or a sourcing agent who vouches for them, posts a BTC bond that backs it.",
+    body: "The buyer pays 30% in MUSD. The supplier, or their sourcing agent, locks a BTC bond.",
   },
   {
     icon: "package",
     title: "Signed attestations",
-    body: "An inspector signs that the goods are ready, a carrier that they shipped. Each signature carries a fingerprint of the evidence file.",
+    body: "An inspector signs that the goods are ready, a carrier that they shipped.",
   },
   {
     icon: "balance-scale",
     title: "Release or refund",
-    body: "After the challenge window the balance goes to the supplier. A dispute goes to the named arbiter; if the supplier defaults, the buyer claims the bond.",
+    body: "After a challenge window the 70% goes to the supplier. Disputes go to the arbiter.",
   },
 ];
 
@@ -36,15 +36,15 @@ export function HowItWorks() {
     <section
       id="how-it-works"
       aria-labelledby="how-title"
-      className="theme-paper scroll-mt-20 py-24 sm:py-32"
+      className="theme-paper scroll-mt-20 py-16 sm:py-20"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2fr)] lg:gap-14">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-14">
           <Reveal className="space-y-5 lg:pt-6">
             <p className="eyebrow">How it works</p>
             <h2
               id="how-title"
-              className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-[2.4rem]"
+              className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-[2.25rem]"
             >
               Every rule is fixed before the first dollar moves.
             </h2>
@@ -60,17 +60,17 @@ export function HowItWorks() {
             </Button>
           </Reveal>
 
-          <ol className="grid gap-x-4 gap-y-8 pt-4 sm:grid-cols-2 xl:grid-cols-4 [&>li]:h-full">
+          <ol className="grid content-start gap-x-4 gap-y-8 pt-4 sm:grid-cols-2 xl:grid-cols-4 [&>li]:h-full">
             {STEPS.map(({ icon, title, body }, i) => (
               <li key={title}>
                 <Reveal delay={i * 100} className="h-full">
-                  <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card px-5 pt-8 pb-5 shadow-[0_1px_0_rgb(17_26_38/0.04),0_16px_40px_-28px_rgb(17_26_38/0.45)]">
+                  <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card px-5 pt-7 pb-4 shadow-[0_1px_0_rgb(17_26_38/0.04),0_16px_40px_-28px_rgb(17_26_38/0.45)]">
                     <span className="absolute -top-4 start-5 grid size-8 place-items-center rounded-full bg-gold-400 text-sm font-bold text-navy-950 shadow-[0_4px_12px_-4px_var(--gold-500)]">
                       {i + 1}
                     </span>
                     <h3 className="text-[1.05rem] font-semibold">{title}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-                    <Icon3D name={icon} className="mx-auto mt-auto size-24 pt-4" />
+                    <Icon3D name={icon} className="mx-auto mt-auto size-20 pt-3" />
                   </div>
                 </Reveal>
               </li>
@@ -78,7 +78,7 @@ export function HowItWorks() {
           </ol>
         </div>
 
-        <Reveal className="mt-16">
+        <Reveal className="mt-12">
           <figure className="rounded-2xl border border-border bg-card p-6 sm:p-8">
             <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-lg font-semibold">Example: a $10,000 order</span>
