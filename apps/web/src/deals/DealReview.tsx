@@ -1,135 +1,145 @@
 import type { DealTerms } from "@wasit/sdk";
+import { ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import { zeroAddress, type Address } from "viem";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { percent } from "@/landing/params";
 import { formatDuration, formatMusd } from "@/lib/format";
 import { explorerAddress } from "@/lib/links";
-import { percent } from "@/landing/params";
+import { PERIODS } from "./terms";
 import { summarize } from "./terms";
 
-type Money = Pick<DealTerms, "advanceAmount" | "balanceAmount" | "feeBps" | "bondRatioBps">;
-
-function Row({ label, value, note }: { label: string; value: string; note?: string }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2.5">
-      <dt className="text-sm text-muted-foreground">
+    <section className="space-y-3 border-t px-6 py-6 sm:px-8">
+      <h2 className="eyebrow">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Row({ label, note, children }: { label: string; note?: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2">
+      <dt className="text-sm">
         {label}
-        {note && <span className="block text-xs text-muted-foreground/80">{note}</span>}
+        {note && <span className="block text-xs text-muted-foreground">{note}</span>}
       </dt>
-      <dd className="amount text-end text-sm font-semibold whitespace-nowrap">{value}</dd>
+      <dd className="text-end text-sm font-semibold whitespace-nowrap">{children}</dd>
     </div>
   );
 }
 
-/** Where every MUSD of the deal goes; used live beside the form and on the review screen. */
-export function MoneySummary({ terms, hasBond }: { terms: Money; hasBond: boolean }) {
-  const s = summarize(terms);
+function Party({ role, address }: { role: string; address: Address }) {
   return (
-    <dl className="divide-y divide-border">
-      <Row label="Order total" value={formatMusd(s.total)} />
-      <Row
-        label="Supplier gets when you fund the advance"
-        value={formatMusd(s.netAdvance)}
-        note={`advance less ${percent(terms.feeBps)} fee`}
-      />
-      <Row
-        label="Supplier gets on release"
-        value={formatMusd(s.netBalance)}
-        note={`balance less ${percent(terms.feeBps)} fee`}
-      />
-      <Row
-        label="Protocol fee"
-        value={formatMusd(s.advanceFee + s.balanceFee)}
-        note="returned to you if the supplier defaults"
-      />
-      <Row
-        label="BTC bond to post"
-        value={hasBond ? `≥ ${formatMusd(s.bondTarget)}` : "None"}
-        note={
-          hasBond ? `${percent(terms.bondRatioBps)} of the net advance, valued in MUSD` : undefined
-        }
-      />
-    </dl>
-  );
-}
-
-function AddressRow({ label, address }: { label: string; address: Address }) {
-  return (
-    <div className="grid gap-1 py-2.5 sm:grid-cols-[9rem_1fr] sm:gap-4">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+    <div className="flex items-baseline justify-between gap-4 py-2">
+      <dt className="text-sm">{role}</dt>
       <dd className="min-w-0">
         <a
           href={explorerAddress(address)}
           target="_blank"
           rel="noreferrer"
-          className="font-mono text-sm break-all hover:text-gold hover:underline"
+          title={address}
+          className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-gold hover:underline"
         >
-          {address}
+          <span className="hidden md:inline">{address}</span>
+          <span className="md:hidden">
+            {address.slice(0, 8)}…{address.slice(-6)}
+          </span>
+          <ExternalLink aria-hidden className="size-3 shrink-0" />
         </a>
       </dd>
     </div>
   );
 }
 
-/** Everything the buyer is about to sign, as it will be stored on-chain. */
+const SECONDS: Record<(typeof PERIODS)[number]["key"], keyof DealTerms> = {
+  production: "productionPeriod",
+  balanceWindow: "balanceWindow",
+  shipping: "shippingPeriod",
+  challenge: "challengeWindow",
+  arbitration: "arbitrationPeriod",
+};
+
+/** The terms exactly as `createDeal` will store them, laid out as one document. */
 export function DealReview({ terms, termsFileName }: { terms: DealTerms; termsFileName: string }) {
   const hasBond = terms.bonder !== zeroAddress;
-  const periods = [
-    ["Production", terms.productionPeriod],
-    ["Balance window", terms.balanceWindow],
-    ["Shipping", terms.shippingPeriod],
-    ["Challenge window", terms.challengeWindow],
-    ["Arbitration", terms.arbitrationPeriod],
-  ] as const;
+  const s = summarize(terms);
+  const upfrontPct = Number((terms.advanceAmount * 10_000n) / s.total) / 100;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Parties</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="divide-y divide-border">
-            <AddressRow label="Buyer (you)" address={terms.buyer} />
-            <AddressRow label="Supplier" address={terms.supplier} />
-            <AddressRow label="Arbiter" address={terms.arbiter} />
-            <AddressRow label="Inspector" address={terms.inspector} />
-            <AddressRow label="Carrier" address={terms.carrier} />
-            {hasBond && <AddressRow label="Bonder" address={terms.bonder} />}
-          </dl>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Money</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MoneySummary terms={terms} hasBond={hasBond} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Deadlines</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="divide-y divide-border">
-            {periods.map(([label, seconds]) => (
-              <Row key={label} label={label} value={formatDuration(seconds)} />
-            ))}
-          </dl>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Terms document</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p className="font-medium">{termsFileName}</p>
-          <p className="font-mono text-xs break-all text-muted-foreground">{terms.termsHash}</p>
-          <p className="text-muted-foreground">
-            Only this fingerprint goes on-chain. Keep the file.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <Card className="gap-0 py-0">
+      <header className="space-y-4 px-6 py-7 sm:px-8">
+        <p className="text-sm text-muted-foreground">Order value</p>
+        <p className="text-4xl font-semibold tracking-tight">{formatMusd(s.total)}</p>
+        <div className="flex h-2.5 overflow-hidden rounded-full">
+          <div className="bg-gold" style={{ width: `${upfrontPct}%` }} />
+          <div className="flex-1 bg-navy-700" />
+        </div>
+        <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 text-sm">
+          <span>
+            <span className="me-2 inline-block size-2 rounded-full bg-gold" />
+            {formatMusd(terms.advanceAmount)} upfront ({upfrontPct}%)
+          </span>
+          <span>
+            <span className="me-2 inline-block size-2 rounded-full bg-navy-700" />
+            {formatMusd(terms.balanceAmount)} in escrow
+          </span>
+        </div>
+      </header>
+
+      <Section title="Money">
+        <dl className="divide-y">
+          <Row
+            label="Supplier receives when you pay the advance"
+            note={`after the ${percent(terms.feeBps)} fee`}
+          >
+            {formatMusd(s.netAdvance)}
+          </Row>
+          <Row label="Supplier receives on release" note={`after the ${percent(terms.feeBps)} fee`}>
+            {formatMusd(s.netBalance)}
+          </Row>
+          <Row label="Protocol fee" note="returned to you if the supplier defaults">
+            {formatMusd(s.advanceFee + s.balanceFee)}
+          </Row>
+          <Row
+            label="BTC bond"
+            note={
+              hasBond
+                ? `${percent(terms.bondRatioBps)} of what the supplier receives upfront`
+                : "the advance is unprotected"
+            }
+          >
+            {hasBond ? `≥ ${formatMusd(s.bondTarget)}` : "None"}
+          </Row>
+        </dl>
+      </Section>
+
+      <Section title="People">
+        <dl className="divide-y">
+          <Party role="Buyer (you)" address={terms.buyer} />
+          <Party role="Supplier" address={terms.supplier} />
+          <Party role="Inspector" address={terms.inspector} />
+          <Party role="Carrier" address={terms.carrier} />
+          <Party role="Arbiter" address={terms.arbiter} />
+          {hasBond && <Party role="Posts the BTC" address={terms.bonder} />}
+        </dl>
+      </Section>
+
+      <Section title="Deadlines">
+        <dl className="divide-y">
+          {PERIODS.map((p) => (
+            <Row key={p.key} label={p.label}>
+              {formatDuration(Number(terms[SECONDS[p.key]]))}
+            </Row>
+          ))}
+        </dl>
+      </Section>
+
+      <Section title="Terms document">
+        <p className="text-sm font-semibold break-all">{termsFileName}</p>
+        <p className="font-mono text-xs break-all text-muted-foreground">{terms.termsHash}</p>
+      </Section>
+    </Card>
   );
 }

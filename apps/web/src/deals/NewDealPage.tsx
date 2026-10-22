@@ -269,45 +269,78 @@ export function NewDealPage() {
           </p>
         </header>
 
-        <DealReview terms={review.terms} termsFileName={review.fileName} />
+        {blocked && <Notice>{blocked}</Notice>}
 
-        <div className="space-y-4">
-          <TxStatusPanel
-            status={tx.status}
-            confirmed={
-              createdId !== undefined && (
-                <p>
-                  Deal <strong>#{createdId.toString()}</strong> is created. Share its page with the
-                  supplier so they can accept.
-                </p>
-              )
-            }
-          />
-          <div className="flex flex-wrap gap-3">
-            {done ? (
-              createdId !== undefined && (
-                <Button asChild size="lg">
-                  <Link to={`/deals/${createdId}${search}`}>
-                    Open deal #{createdId.toString()} <ArrowRight />
-                  </Link>
-                </Button>
-              )
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  disabled={busy}
-                  onClick={() => setReview(undefined)}
-                >
-                  <ArrowLeft /> Edit
-                </Button>
-                <Button size="lg" disabled={busy || !!blocked} onClick={() => void create()}>
-                  {tx.status.phase === "failed" ? "Try again" : "Create deal"}
-                </Button>
-              </>
-            )}
-          </div>
+        <div className="grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
+          <DealReview terms={review.terms} termsFileName={review.fileName} />
+
+          <aside className="lg:sticky lg:top-24">
+            <Card className="gap-5">
+              <CardHeader>
+                <CardTitle>{done ? "Deal created" : "Sign to create the deal"}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {!done && (
+                  <ol className="space-y-2 text-sm leading-relaxed">
+                    {[
+                      "Signing records these terms. No MUSD moves yet.",
+                      "The supplier accepts, and the arbiter accepts the role.",
+                      ...(review.terms.bondRatioBps > 0
+                        ? ["The BTC bond is posted at the required coverage."]
+                        : []),
+                      "You pay the advance from the deal page.",
+                    ].map((text, i) => (
+                      <li key={text} className="flex gap-3">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                          {i + 1}
+                        </span>
+                        {text}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <TxStatusPanel
+                  status={tx.status}
+                  confirmed={
+                    createdId !== undefined && (
+                      <p>
+                        Deal <strong>#{createdId.toString()}</strong> is created. Share its page
+                        with the supplier so they can accept.
+                      </p>
+                    )
+                  }
+                />
+                {done ? (
+                  createdId !== undefined && (
+                    <Button asChild size="lg" className="w-full">
+                      <Link to={`/deals/${createdId}${search}`}>
+                        Open deal #{createdId.toString()} <ArrowRight />
+                      </Link>
+                    </Button>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      disabled={busy || !!blocked}
+                      onClick={() => void create()}
+                    >
+                      {tx.status.phase === "failed" ? "Try again" : "Create deal"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      disabled={busy}
+                      onClick={() => setReview(undefined)}
+                    >
+                      <ArrowLeft /> Back to edit
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
         </div>
       </div>
     );
