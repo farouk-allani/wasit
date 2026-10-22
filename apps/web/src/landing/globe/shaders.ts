@@ -182,30 +182,3 @@ export const hub = {
     }
   `,
 };
-
-/** Dusk sky used only to light the metal ribbons (a PMREM environment), never drawn. */
-export const envSky = {
-  vertex: /* glsl */ `
-    varying vec3 vDir;
-    void main() {
-      vDir = normalize(position);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragment: /* glsl */ `
-    uniform vec3 uSun;
-    uniform vec3 uTop;
-    uniform vec3 uHorizon;
-    uniform vec3 uGround;
-    uniform vec3 uSunColor;
-    varying vec3 vDir;
-    void main() {
-      vec3 d = normalize(vDir);
-      vec3 color = d.y > 0.0 ? mix(uHorizon, uTop, pow(d.y, 0.6)) : mix(uHorizon, uGround, pow(-d.y, 0.4));
-      color += uSunColor * pow(max(dot(d, uSun), 0.0), 12.0) * 6.0;
-      color += uSunColor * pow(max(dot(d, uSun), 0.0), 2.0) * 0.6;
-      color += vec3(1.0) * smoothstep(0.92, 0.97, dot(d, normalize(vec3(-0.6, 0.7, 0.4)))) * 1.5;
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `,
-};
