@@ -1,3 +1,5 @@
 # False positives only. Each line is a gitleaks fingerprint (commit:file:rule:line) with the reason above it.
 # Public MUSD token address on Mezo testnet, matched by generic-api-key because the field is named "token".
 0d4e954f8ab64f65bca2de534d37206fd28bac63:apps/web/src/deals/dealStatus.test.ts:generic-api-key:23
+# Same line after the rebase-merge of PR #5 (new commit id).
+29b274e6b1340918979622a6d3c6b31691ce126e:apps/web/src/deals/dealStatus.test.ts:generic-api-key:23
