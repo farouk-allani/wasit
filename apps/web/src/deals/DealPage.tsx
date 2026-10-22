@@ -11,6 +11,7 @@ import { formatMusd, formatRelative, formatTime } from "@/lib/format";
 import { explorerAddress } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { BondPanel } from "./BondPanel";
+import { DealActions } from "./DealActions";
 import { Ledger, Timeline } from "./DealHistory";
 import {
   dealActions,
@@ -310,6 +311,13 @@ export function DealPage() {
           )}
         </div>
         <aside className="space-y-6 lg:sticky lg:top-24">
+          <DealActions
+            dealId={id}
+            deal={deal}
+            actions={actions}
+            account={address}
+            funds={funds.data}
+          />
           <BondPanel
             dealId={id}
             deal={deal}
