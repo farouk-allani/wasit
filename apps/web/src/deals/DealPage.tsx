@@ -10,10 +10,18 @@ import { useDeal } from "@/data/useDeals";
 import { formatMusd, formatRelative, formatTime } from "@/lib/format";
 import { explorerAddress } from "@/lib/links";
 import { cn } from "@/lib/utils";
+import { BondPanel } from "./BondPanel";
 import { Ledger, Timeline } from "./DealHistory";
-import { nextStep, rolesOf, type DealSnapshot, type NextStep, type Role } from "./dealStatus";
+import {
+  dealActions,
+  nextStep,
+  rolesOf,
+  type DealSnapshot,
+  type NextStep,
+  type Role,
+} from "./dealStatus";
 import { summarize } from "./terms";
-import { useDealLive, useNow } from "./useDealLive";
+import { useDealLive, useNow, useWalletFunds } from "./useDealLive";
 
 const STATE: Record<
   number,
@@ -212,6 +220,7 @@ export function DealPage() {
   const live = useDealLive(id);
   const history = useDeal(id);
   const now = useNow();
+  const funds = useWalletFunds(address);
 
   if (id === undefined)
     return (
@@ -246,9 +255,10 @@ export function DealPage() {
       </Centered>
     );
 
-  const { deal, bond, coverageBps } = live.data;
+  const { deal, bond, coverageBps, btcPrice, priceError } = live.data;
   const snapshot: DealSnapshot = { deal, bond, coverageBps, now, account: address };
   const step = nextStep(snapshot);
+  const actions = dealActions(snapshot);
   const roles = rolesOf(deal.terms, address);
   const state = STATE[deal.state] ?? { label: "Unknown", tone: "outline" as const };
   const view = history.deal;
@@ -300,6 +310,17 @@ export function DealPage() {
           )}
         </div>
         <aside className="space-y-6 lg:sticky lg:top-24">
+          <BondPanel
+            dealId={id}
+            deal={deal}
+            bond={bond}
+            coverageBps={coverageBps}
+            btcPrice={btcPrice}
+            priceError={priceError}
+            actions={actions}
+            account={address}
+            btcAllowance={funds.data?.btcAllowance}
+          />
           <PartiesCard deal={deal} account={address} />
         </aside>
       </div>
