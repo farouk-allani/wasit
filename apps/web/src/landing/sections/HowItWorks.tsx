@@ -7,22 +7,22 @@ import { Reveal } from "../Reveal";
 
 const STEPS: { icon: Icon3DName; title: string; body: string }[] = [
   {
-    icon: "contract",
+    icon: "handshake",
     title: "Agree the terms",
     body: "Buyer and supplier fix the amounts, the advance share, who attests, every deadline, the challenge window and the arbiter before any money moves.",
   },
   {
-    icon: "coins-btc",
+    icon: "money-bag",
     title: "Advance, backed by BTC",
     body: "The buyer pays the advance in MUSD straight to the supplier. The supplier, or a sourcing agent who vouches for them, posts a BTC bond that backs it.",
   },
   {
-    icon: "doc-check",
+    icon: "package",
     title: "Signed attestations",
     body: "An inspector signs that the goods are ready, a carrier that they shipped. Each signature carries a fingerprint of the evidence file.",
   },
   {
-    icon: "swap",
+    icon: "balance-scale",
     title: "Release or refund",
     body: "After the challenge window the balance goes to the supplier. A dispute goes to the named arbiter; if the supplier defaults, the buyer claims the bond.",
   },

@@ -1,29 +1,30 @@
 import { cn } from "@/lib/utils";
-import alert from "./alert.webp";
-import btcCoin from "./btc-coin.webp";
-import coinsBtc from "./coins-btc.webp";
-import contract from "./contract.webp";
-import docCheck from "./doc-check.webp";
-import dollarCoin from "./dollar-coin.webp";
-import padlock from "./padlock.webp";
+import balanceScale from "./balance-scale.webp";
+import coin from "./coin.webp";
+import dollarBanknote from "./dollar-banknote.webp";
+import handshake from "./handshake.webp";
+import locked from "./locked.webp";
+import moneyBag from "./money-bag.webp";
+import packageBox from "./package.webp";
 import shield from "./shield.webp";
-import swap from "./swap.webp";
+import warning from "./warning.webp";
 
+// Fluent Emoji 3D by Microsoft, MIT (see LICENSE-fluent-emoji.txt)
 const ICONS = {
-  alert,
-  "btc-coin": btcCoin,
-  "coins-btc": coinsBtc,
-  contract,
-  "doc-check": docCheck,
-  "dollar-coin": dollarCoin,
-  padlock,
+  "balance-scale": balanceScale,
+  coin,
+  "dollar-banknote": dollarBanknote,
+  handshake,
+  locked,
+  "money-bag": moneyBag,
+  package: packageBox,
   shield,
-  swap,
+  warning,
 };
 
 export type Icon3DName = keyof typeof ICONS;
 
-/** One of the Blender-rendered 3D icons (scripts/icons); decorative, so empty alt text. */
+/** A colored 3D icon; decorative, so empty alt text. */
 export function Icon3D({ name, className }: { name: Icon3DName; className?: string }) {
   return (
     <img
