@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,17 @@ export function SiteHeader({
 }) {
   const scrolled = useScrolled(24);
   const solid = variant === "app" || scrolled;
+  const keep = useDeploymentQuery();
+  const appLink = (item: (typeof appNav)[number], className: (active: boolean) => string) => (
+    <NavLink
+      key={item.to}
+      to={item.to + keep}
+      end={item.end}
+      className={({ isActive }) => className(isActive)}
+    >
+      {item.label}
+    </NavLink>
+  );
   return (
     <header
       className={cn(
@@ -59,26 +70,19 @@ export function SiteHeader({
                   {item.label}
                 </a>
               ))
-            : appNav.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      isActive ? "text-gold" : "text-foreground/75 hover:text-foreground",
-                    )
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+            : appNav.map((item) =>
+                appLink(item, (active) =>
+                  cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    active ? "text-gold" : "text-foreground/75 hover:text-foreground",
+                  ),
+                ),
+              )}
         </nav>
         <div className="ms-auto flex items-center gap-3">
           {variant === "marketing" ? (
             <Button asChild>
-              <Link to="/deals">
+              <Link to={`/deals${keep}`}>
                 Launch app <ArrowRight aria-hidden className="rtl:-scale-x-100" />
               </Link>
             </Button>
@@ -87,6 +91,18 @@ export function SiteHeader({
           )}
         </div>
       </div>
+      {variant === "app" && (
+        <nav aria-label="Main" className="flex gap-1 border-t border-border px-2 md:hidden">
+          {appNav.map((item) =>
+            appLink(item, (active) =>
+              cn(
+                "flex-1 border-b-2 py-2.5 text-center text-sm font-semibold",
+                active ? "border-gold text-gold" : "border-transparent text-foreground/75",
+              ),
+            ),
+          )}
+        </nav>
+      )}
     </header>
   );
 }
@@ -100,4 +116,10 @@ function useScrolled(threshold: number) {
     return () => window.removeEventListener("scroll", update);
   }, [threshold]);
   return scrolled;
+}
+
+/** `?deployment=…` of the current page, kept on header links so a demo stays on its contract set. */
+function useDeploymentQuery() {
+  const deployment = new URLSearchParams(useLocation().search).get("deployment");
+  return deployment ? `?deployment=${encodeURIComponent(deployment)}` : "";
 }
