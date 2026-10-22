@@ -126,6 +126,7 @@ export function BondPanel({
   coverageBps,
   btcPrice,
   priceError,
+  simulated,
   actions,
   account,
   btcAllowance,
@@ -136,6 +137,8 @@ export function BondPanel({
   coverageBps: bigint | undefined;
   btcPrice: bigint | undefined;
   priceError: string | undefined;
+  /** The bond's oracle says it is simulated. */
+  simulated: boolean;
   actions: DealAction[];
   account: Address | undefined;
   btcAllowance: bigint | undefined;
@@ -198,7 +201,7 @@ export function BondPanel({
         </span>
       </CardHeader>
       <CardContent className="space-y-5">
-        {d.simulatedPriceFeed && (
+        {(simulated || d.simulatedPriceFeed) && (
           <p className="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-2 text-xs font-semibold text-warning">
             <FlaskConical aria-hidden className="size-4 shrink-0" /> Simulated price feed
           </p>

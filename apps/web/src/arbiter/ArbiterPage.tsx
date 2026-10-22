@@ -186,7 +186,7 @@ export function ArbiterPage() {
       </Centered>
     );
 
-  const { deal, bond, coverageBps } = live.data;
+  const { deal, bond, coverageBps, simulated } = live.data;
   const view = history.deal;
   if (deal.state !== DealState.Disputed && tx.status.phase !== "confirmed")
     return (
@@ -264,7 +264,11 @@ export function ArbiterPage() {
                 {bonded && (
                   <Row
                     label="Bond value today"
-                    note={d.simulatedPriceFeed ? "Simulated price feed" : "at the oracle price"}
+                    note={
+                      simulated || d.simulatedPriceFeed
+                        ? "Simulated price feed"
+                        : "at the oracle price"
+                    }
                   >
                     {bondValue !== undefined ? formatMusd(bondValue) : "price unavailable"}
                   </Row>
