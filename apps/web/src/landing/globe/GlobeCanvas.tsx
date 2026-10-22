@@ -18,7 +18,11 @@ export default function GlobeCanvas({
     if (!element) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     try {
-      const globe = createGlobe(element, { reducedMotion, onFirstFrame: () => setShown(true) });
+      const globe = createGlobe(element, {
+        reducedMotion,
+        onFirstFrame: () => setShown(true),
+        onError: onFail,
+      });
       return () => globe.destroy();
     } catch (error) {
       console.warn("Globe disabled:", error);
