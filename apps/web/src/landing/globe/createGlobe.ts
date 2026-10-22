@@ -214,7 +214,7 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
     // Keep the whole globe and its ribbons in frame on narrow (portrait) containers
     camera.position.z = w < h ? CAMERA_Z * (h / w) * 0.92 : CAMERA_Z;
     camera.updateProjectionMatrix();
-    if (options.reducedMotion) render();
+    if (still) render();
   };
 
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -222,6 +222,11 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
     pointer.tx = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.ty = (event.clientY / window.innerHeight) * 2 - 1;
   };
+
+  // Still frame under reduced motion, or once the device proves too slow to animate smoothly
+  let still = options.reducedMotion;
+  const SAMPLE_FRAMES = 45;
+  const frames = { warmup: 0, samples: [] as number[], judged: false };
 
   const timer = new Timer();
   let firstFrame = true;
@@ -235,7 +240,9 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
 
   const tick = () => {
     timer.update();
-    const dt = Math.min(timer.getDelta(), 0.1);
+    const raw = timer.getDelta();
+    if (frameBudgetBlown(raw)) return;
+    const dt = Math.min(raw, 0.1);
     const t = timer.getElapsed();
     time.value = t;
     // Sway around the corridor instead of turning away from it; ease toward the pointer
@@ -247,9 +254,37 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
     render();
   };
 
+  // Skip shader warm-up, then take the median of 45 frames (immune to a few long frames while
+  // the page boots). Slower than ~22 fps means software rendering or a struggling GPU, where a
+  // still globe beats a stuttering page.
+  const frameBudgetBlown = (seconds: number) => {
+    if (frames.judged) return false;
+    if (frames.warmup < 15) {
+      frames.warmup++;
+      return false;
+    }
+    frames.samples.push(seconds);
+    if (frames.samples.length < SAMPLE_FRAMES) return false;
+    frames.judged = true;
+    const median = frames.samples.sort((a, b) => a - b)[SAMPLE_FRAMES >> 1] ?? 0;
+    if (median < 0.045) return false;
+    still = true;
+    console.info(`Globe: ${Math.round(median * 1000)} ms per frame, showing a still frame`);
+    window.removeEventListener("pointermove", onPointer);
+    syncLoop();
+    return true;
+  };
+
   let visible = true;
+  let running = false;
   const syncLoop = () => {
-    const run = visible && !document.hidden && !options.reducedMotion;
+    const run = visible && !document.hidden && !still;
+    if (run && !running) {
+      // Pauses must not count as slow frames
+      timer.reset();
+      if (!frames.judged) Object.assign(frames, { warmup: 0, samples: [] });
+    }
+    running = run;
     renderer.setAnimationLoop(run ? tick : null);
   };
   const intersection = new IntersectionObserver(([entry]) => {
