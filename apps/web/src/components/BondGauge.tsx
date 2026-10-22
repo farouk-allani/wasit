@@ -57,7 +57,6 @@ export function BondGauge({
   className?: string;
 }) {
   const zone = coverageZone(coverageBps, topUpBps, protectBps);
-  const [mx, my] = point(coverageBps);
   const percent = `${(coverageBps / 100).toFixed(coverageBps % 100 === 0 ? 0 : 1)}%`;
   return (
     <div
@@ -110,23 +109,32 @@ export function BondGauge({
             </g>
           );
         })}
-        <line
-          x1={CX}
-          y1={CY}
-          x2={mx}
-          y2={my}
-          className="stroke-gold transition-all duration-300"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        {/* Needle and knob rotate as one group, so the knob stays on the arc and on the needle */}
+        <g
+          className="transition-transform duration-300 ease-out"
+          style={{
+            transform: `rotate(${(angle(coverageBps) * 180) / Math.PI}deg)`,
+            transformOrigin: `${CX}px ${CY}px`,
+          }}
+        >
+          <line
+            x1={CX}
+            y1={CY}
+            x2={CX + R}
+            y2={CY}
+            className="stroke-gold"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <circle
+            cx={CX + R}
+            cy={CY}
+            r="7"
+            className="fill-background stroke-gold"
+            strokeWidth="3"
+          />
+        </g>
         <circle cx={CX} cy={CY} r="5" className="fill-gold" />
-        <circle
-          cx={mx}
-          cy={my}
-          r="7"
-          className="fill-background stroke-gold transition-all duration-300"
-          strokeWidth="3"
-        />
       </svg>
       <div className="mt-2 text-center">
         <p className="amount text-4xl font-semibold tracking-tight">{percent}</p>
