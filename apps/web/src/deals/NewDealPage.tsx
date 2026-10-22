@@ -2,43 +2,42 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useQueryClient } from "@tanstack/react-query";
 import { wasitEscrowAbi, type DealTerms } from "@wasit/sdk";
-import { ArrowLeft, ArrowRight, CircleAlert } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, CircleAlert } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Link, useLocation } from "react-router";
-import { parseEventLogs, parseUnits } from "viem";
+import { isAddress, parseEventLogs } from "viem";
 import { useAccount } from "wagmi";
 import { TxStatusPanel } from "@/components/TxStatusPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDeployment } from "@/deployment";
-import { MUSD_DECIMALS } from "@/lib/format";
+import { formatDuration, formatMusd } from "@/lib/format";
 import { useContractTx } from "@/lib/useContractTx";
-import {
-  AmountsSection,
-  BondSection,
-  DeadlinesSection,
-  PartiesSection,
-  TermsSection,
-} from "./DealForm";
-import { DealReview, MoneySummary } from "./DealReview";
+import { cn } from "@/lib/utils";
+import { DealReview } from "./DealReview";
+import { DeadlinesStep, OrderStep, PeopleStep, ProtectionStep, STEP_FIELDS } from "./DealSteps";
 import {
   DEFAULT_VALUES,
   dealFormSchema,
+  parseMusd,
+  PERIODS,
+  periodSeconds,
+  splitOrder,
+  TIMELINES,
   toDealTerms,
   type DealFormInput,
   type DealFormValues,
 } from "./terms";
 import { useEscrowConfig } from "./useEscrowConfig";
 
-const toAmount = (v: string) =>
-  /^\d+(\.\d{1,18})?$/.test(v.trim()) ? parseUnits(v.trim(), MUSD_DECIMALS) : 0n;
+const STEPS = ["Order", "People", "Protection", "Deadlines"] as const;
 
-function Notice({ children }: { children: React.ReactNode }) {
+function Notice({ children }: { children: ReactNode }) {
   return (
     <p
       role="alert"
-      className="flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm leading-relaxed"
+      className="flex gap-3 rounded-xl border border-warning/50 bg-warning/10 p-4 text-sm leading-relaxed"
     >
       <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
       <span>{children}</span>
@@ -46,29 +45,131 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Live money summary beside the form; zero for fields that are not valid amounts yet. */
-function LiveSummary({ feeBps }: { feeBps: number }) {
-  const [advance, balance, bondEnabled, bondRatioPct] = useWatch<DealFormInput>({
-    name: ["advance", "balance", "bondEnabled", "bondRatioPct"],
-  }) as [string, string, boolean, string];
-  const ratio = /^\d+$/.test(bondRatioPct) ? Number(bondRatioPct) * 100 : 0;
+/** Progress rail: finished steps are links back, later steps unlock as you go. */
+function Stepper({
+  step,
+  reached,
+  onJump,
+}: {
+  step: number;
+  reached: number;
+  onJump: (i: number) => void;
+}) {
   return (
-    <MoneySummary
-      terms={{
-        advanceAmount: toAmount(advance),
-        balanceAmount: toAmount(balance),
-        feeBps,
-        bondRatioBps: ratio,
-      }}
-      hasBond={bondEnabled}
-    />
+    <nav aria-label="Progress">
+      <p className="mb-3 text-sm text-muted-foreground sm:hidden">
+        Step {step + 1} of {STEPS.length} ·{" "}
+        <strong className="text-foreground">{STEPS[step]}</strong>
+      </p>
+      <ol className="flex items-center gap-2">
+        {STEPS.map((label, i) => {
+          const done = i < step;
+          const current = i === step;
+          return (
+            <li key={label} className="flex flex-1 items-center gap-2 last:flex-none">
+              <button
+                type="button"
+                disabled={i > reached}
+                onClick={() => onJump(i)}
+                aria-current={current ? "step" : undefined}
+                className="group flex items-center gap-2.5 disabled:cursor-not-allowed"
+              >
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors",
+                    done && "border-gold bg-gold text-white",
+                    current && "border-primary bg-primary text-primary-foreground",
+                    !done && !current && "border-input text-muted-foreground",
+                  )}
+                >
+                  {done ? <Check aria-hidden className="size-4" /> : i + 1}
+                </span>
+                <span
+                  className={cn(
+                    "hidden text-sm font-semibold sm:inline",
+                    !current && "text-muted-foreground group-enabled:group-hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+              </button>
+              {i < STEPS.length - 1 && (
+                <span
+                  aria-hidden
+                  className={cn("h-0.5 flex-1 rounded-full", done ? "bg-gold" : "bg-input")}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function SheetRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-end font-semibold">{children}</dd>
+    </div>
+  );
+}
+
+const dash = <span className="font-normal text-muted-foreground">—</span>;
+
+/** The deal so far, filled in as the buyer goes through the steps. */
+function LiveSheet() {
+  const v = useWatch<DealFormInput>() as DealFormInput;
+  const total = parseMusd(v.total);
+  const split = total ? splitOrder(total, v.advancePct) : undefined;
+  const roles = [v.supplier, v.inspector, v.carrier, v.arbiter].filter((a) =>
+    isAddress(a.trim()),
+  ).length;
+  const toRelease = PERIODS.slice(0, 4).reduce((s, p) => s + periodSeconds(v.periods[p.key]), 0);
+  const preset = v.timeline === "custom" ? "Custom" : TIMELINES[v.timeline].label;
+
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle>Deal sheet</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <dl className="divide-y">
+          <SheetRow label="Order">{total ? formatMusd(total) : dash}</SheetRow>
+          <SheetRow label={`Upfront (${v.advancePct}%)`}>
+            {split ? formatMusd(split.advance) : dash}
+          </SheetRow>
+          <SheetRow label="In escrow">{split ? formatMusd(split.balance) : dash}</SheetRow>
+          <SheetRow label="People">{roles ? `${roles} of 4 set` : dash}</SheetRow>
+          <SheetRow label="Protection">
+            {v.bondEnabled ? `BTC bond, ${v.bondRatioPct}%` : "None"}
+          </SheetRow>
+          <SheetRow label="Deadlines">
+            {Number.isFinite(toRelease) && toRelease > 0 ? (
+              <>
+                {preset}
+                <span className="block text-xs font-normal text-muted-foreground">
+                  ~{formatDuration(toRelease)} from advance to release
+                </span>
+              </>
+            ) : (
+              dash
+            )}
+          </SheetRow>
+          <SheetRow label="Terms file">
+            {v.termsHash ? <span className="break-all">{v.termsFileName}</span> : dash}
+          </SheetRow>
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
 /**
- * `/deals/new`: the buyer fills the terms, reviews exactly what will be stored, then signs
- * `createDeal`. Creating moves no money; funding happens on the deal page once the supplier has
- * accepted (the escrow only takes the advance in the Accepted state).
+ * `/deals/new`: four short steps (order, people, protection, deadlines), a review of exactly
+ * what will be stored, then `createDeal`. Creating moves no money; funding happens on the deal
+ * page once the supplier has accepted (ADR-028).
  */
 export function NewDealPage() {
   const { address, isConnected } = useAccount();
@@ -77,6 +178,8 @@ export function NewDealPage() {
   const config = useEscrowConfig();
   const queryClient = useQueryClient();
   const tx = useContractTx();
+  const [step, setStep] = useState(0);
+  const [reached, setReached] = useState(0);
   const [review, setReview] = useState<{ terms: DealTerms; fileName: string } | undefined>();
 
   const schema = useMemo(() => dealFormSchema(address), [address]);
@@ -88,7 +191,7 @@ export function NewDealPage() {
 
   if (!isConnected || !address)
     return (
-      <div className="mx-auto max-w-lg space-y-5 py-10 text-center">
+      <div className="mx-auto max-w-lg space-y-5 py-16 text-center">
         <p className="eyebrow">New deal</p>
         <h1 className="text-3xl font-semibold tracking-tight">Connect the buyer's wallet</h1>
         <p className="text-muted-foreground">
@@ -107,16 +210,26 @@ export function NewDealPage() {
       ? "This escrow does not accept MUSD, so a deal cannot be created on it."
       : undefined;
 
-  const onValid = (values: DealFormValues) => {
-    if (!config.data) return;
-    const terms = toDealTerms(values, {
-      buyer: address,
-      token: deployment.musd,
-      feeBps: config.data.feeBps,
-    });
-    setReview({ terms, fileName: values.termsFileName });
-    tx.reset();
-    window.scrollTo({ top: 0 });
+  const go = (i: number) => {
+    setStep(i);
+    setReached((r) => Math.max(r, i));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const next = async () => {
+    if (!(await form.trigger(STEP_FIELDS[step], { shouldFocus: true }))) return;
+    if (step < STEPS.length - 1) return go(step + 1);
+    await form.handleSubmit((values) => {
+      if (!config.data) return;
+      const terms = toDealTerms(values, {
+        buyer: address,
+        token: deployment.musd,
+        feeBps: config.data.feeBps,
+      });
+      setReview({ terms, fileName: values.termsFileName });
+      tx.reset();
+      window.scrollTo({ top: 0 });
+    })();
   };
 
   const create = async () => {
@@ -158,22 +271,6 @@ export function NewDealPage() {
 
         <DealReview terms={review.terms} termsFileName={review.fileName} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>What happens next</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal space-y-1.5 ps-5 text-sm leading-relaxed text-foreground/85">
-              <li>Creating the deal records these terms. No MUSD moves yet.</li>
-              <li>The supplier accepts the deal and the arbiter accepts the role.</li>
-              {review.terms.bondRatioBps > 0 && (
-                <li>The bonder posts the BTC bond at the required coverage.</li>
-              )}
-              <li>You fund the advance from the deal page. It goes straight to the supplier.</li>
-            </ol>
-          </CardContent>
-        </Card>
-
         <div className="space-y-4">
           <TxStatusPanel
             status={tx.status}
@@ -203,7 +300,7 @@ export function NewDealPage() {
                   disabled={busy}
                   onClick={() => setReview(undefined)}
                 >
-                  <ArrowLeft /> Edit terms
+                  <ArrowLeft /> Edit
                 </Button>
                 <Button size="lg" disabled={busy || !!blocked} onClick={() => void create()}>
                   {tx.status.phase === "failed" ? "Try again" : "Create deal"}
@@ -218,14 +315,15 @@ export function NewDealPage() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={(e) => void form.handleSubmit(onValid)(e)} noValidate className="space-y-8">
+      <div className="space-y-8">
         <header className="space-y-2">
           <p className="eyebrow">New deal</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Protect a production advance</h1>
-          <p className="max-w-2xl text-muted-foreground">
-            Set the parties, amounts, bond and deadlines. You will review everything before signing.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Protect a production advance
+          </h1>
         </header>
+
+        <Stepper step={step} reached={reached} onJump={go} />
 
         {blocked && <Notice>{blocked}</Notice>}
         {config.isError && (
@@ -234,42 +332,45 @@ export function NewDealPage() {
           </Notice>
         )}
 
-        <div className="grid items-start gap-8 lg:grid-cols-[1fr_22rem]">
-          <div className="min-w-0 space-y-6">
-            <PartiesSection />
-            <AmountsSection />
-            <BondSection
-              topUpRatioBps={config.data?.topUpRatioBps}
-              protectRatioBps={config.data?.protectRatioBps}
-            />
-            <DeadlinesSection />
-            <TermsSection />
-          </div>
-
-          <aside className="space-y-4 lg:sticky lg:top-24">
-            <Card>
-              <CardHeader>
-                <CardTitle>Where the money goes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {config.data ? (
-                  <LiveSummary feeBps={config.data.feeBps} />
-                ) : (
-                  <p className="text-sm text-muted-foreground">Reading the escrow's fee…</p>
-                )}
-              </CardContent>
-            </Card>
-            <Button type="submit" size="lg" className="w-full" disabled={!config.data || !!blocked}>
-              Review deal <ArrowRight />
-            </Button>
-            {Object.keys(form.formState.errors).length > 0 && (
-              <p role="alert" className="text-center text-sm text-destructive">
-                Some fields need attention.
-              </p>
+        <div className="grid items-start gap-8 lg:grid-cols-[1fr_20rem]">
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void next();
+            }}
+            className="min-w-0 space-y-8"
+          >
+            {step === 0 && <OrderStep />}
+            {step === 1 && <PeopleStep buyer={address} />}
+            {step === 2 && (
+              <ProtectionStep
+                feeBps={config.data?.feeBps}
+                topUpRatioBps={config.data?.topUpRatioBps}
+                protectRatioBps={config.data?.protectRatioBps}
+              />
             )}
+            {step === 3 && <DeadlinesStep />}
+
+            <div className="flex items-center justify-between gap-3 border-t pt-6">
+              {step > 0 ? (
+                <Button type="button" variant="ghost" onClick={() => go(step - 1)}>
+                  <ArrowLeft /> Back
+                </Button>
+              ) : (
+                <span />
+              )}
+              <Button type="submit" size="lg" disabled={!config.data || !!blocked}>
+                {step < STEPS.length - 1 ? "Continue" : "Review deal"} <ArrowRight />
+              </Button>
+            </div>
+          </form>
+
+          <aside className="lg:sticky lg:top-24">
+            <LiveSheet />
           </aside>
         </div>
-      </form>
+      </div>
     </FormProvider>
   );
 }

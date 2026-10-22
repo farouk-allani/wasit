@@ -1,6 +1,14 @@
 import { keccak256, toBytes, zeroAddress, type Address } from "viem";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VALUES, dealFormSchema, feeOn, hashFile, summarize, toDealTerms } from "./terms";
+import {
+  DEFAULT_VALUES,
+  dealFormSchema,
+  feeOn,
+  hashFile,
+  splitOrder,
+  summarize,
+  toDealTerms,
+} from "./terms";
 
 const buyer: Address = "0x00000000000000000000000000000000000000b1";
 const token: Address = "0x00000000000000000000000000000000000000aa";
@@ -11,8 +19,7 @@ const valid = {
   carrier: "0x00000000000000000000000000000000000000c4",
   arbiter: "0x00000000000000000000000000000000000000c5",
   bonder: "0x00000000000000000000000000000000000000c6",
-  advance: "300",
-  balance: "700.5",
+  total: "1000",
   termsHash: keccak256(toBytes("terms")),
   termsFileName: "terms.pdf",
 };
@@ -36,9 +43,12 @@ describe("dealFormSchema", () => {
   });
 
   it("rejects zero, malformed and over-precise amounts", () => {
-    expect(issues({ ...valid, advance: "0" })).toEqual(["advance"]);
-    expect(issues({ ...valid, advance: "1e3" })).toEqual(["advance"]);
-    expect(issues({ ...valid, balance: `1.${"1".repeat(19)}` })).toEqual(["balance"]);
+    expect(issues({ ...valid, total: "0" })).toEqual(["total"]);
+    expect(issues({ ...valid, total: "1e3" })).toEqual(["total"]);
+    expect(issues({ ...valid, total: `1.${"1".repeat(19)}` })).toEqual(["total"]);
+    // 30% of 1 wei rounds to a zero advance
+    expect(issues({ ...valid, total: "0.000000000000000001" })).toEqual(["total"]);
+    expect(issues({ ...valid, advancePct: 100 })).toEqual(["advancePct"]);
   });
 
   it("bounds periods to 1 minute … 365 days", () => {
@@ -70,7 +80,7 @@ describe("toDealTerms", () => {
   it("converts to exact on-chain units", () => {
     const terms = toDealTerms(parse(valid), { buyer, token, feeBps: 50 });
     expect(terms.advanceAmount).toBe(300n * 10n ** 18n);
-    expect(terms.balanceAmount).toBe(7005n * 10n ** 17n);
+    expect(terms.balanceAmount).toBe(700n * 10n ** 18n);
     expect(terms.bondRatioBps).toBe(15_000);
     expect(terms.productionPeriod).toBe(30 * 86_400);
     expect(terms).toMatchObject({ buyer, token, feeBps: 50, bonder: valid.bonder });
@@ -88,6 +98,10 @@ describe("toDealTerms", () => {
 });
 
 describe("helpers", () => {
+  it("splits an order with the advance rounded down", () => {
+    expect(splitOrder(1001n, 30)).toEqual({ advance: 300n, balance: 701n });
+  });
+
   it("rounds the fee down like the escrow", () => {
     expect(feeOn(199n, 50)).toBe(0n);
     expect(feeOn(300n * 10n ** 18n, 50)).toBe(15n * 10n ** 17n);
