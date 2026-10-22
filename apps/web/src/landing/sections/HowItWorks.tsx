@@ -60,7 +60,7 @@ export function HowItWorks() {
                     <span className="grid size-11 place-items-center rounded-lg bg-navy-900 text-gold-400">
                       <Icon aria-hidden className="size-5" />
                     </span>
-                    <span className="font-display text-sm tracking-[0.2em] text-muted-foreground">
+                    <span className="text-sm font-semibold tracking-[0.2em] text-muted-foreground font-stretch-expanded">
                       0{i + 1}
                     </span>
                   </span>

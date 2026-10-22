@@ -2,8 +2,7 @@
 @import "tw-animate-css";
 
 /* Self-hosted fonts: no third-party font CDN. Arabic loads only when Arabic glyphs render. */
-@import "@fontsource-variable/manrope";
-@import "@fontsource-variable/jost";
+@import "@fontsource-variable/mona-sans/wdth.css";
 @import "@fontsource/ibm-plex-sans-arabic/arabic-400.css";
 @import "@fontsource/ibm-plex-sans-arabic/arabic-600.css";
 @import "@fontsource/ibm-plex-mono/latin-400.css";
@@ -83,8 +82,7 @@
 }
 
 @theme inline {
-  --font-sans: "Manrope Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Jost Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Mona Sans Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -144,7 +142,12 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "ss01", "cv11";
+  }
+  /* Mona Sans is variable in width: headings run semi-expanded, echoing the wide wordmark */
+  h1,
+  h2,
+  h3 {
+    font-stretch: 112.5%;
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
@@ -155,7 +158,7 @@
 }
 
 @utility eyebrow {
-  @apply font-display text-xs font-medium tracking-[0.32em] text-gold uppercase;
+  @apply text-xs font-semibold tracking-[0.2em] text-gold uppercase font-stretch-expanded;
 }
 
 @utility amount {
