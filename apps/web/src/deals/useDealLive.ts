@@ -37,6 +37,10 @@ export function useDealLive(id: bigint | undefined) {
       const live = bond.status === BondStatus.Active || bond.status === BondStatus.Protected;
       // A live bond is valued with the oracle it snapshotted; a new one would use the config's
       const oracle = live ? bond.oracle : configOracle;
+      // A bond is labeled by the oracle it actually uses, whatever the deployment says
+      const simulated = await publicClient
+        .readContract({ address: oracle, abi: priceOracleAbi, functionName: "isSimulated" })
+        .catch(() => false);
       let coverageBps: bigint | undefined;
       let btcPrice: bigint | undefined;
       let priceError: string | undefined;
@@ -57,7 +61,15 @@ export function useDealLive(id: bigint | undefined) {
         priceError =
           "The BTC price feed did not return a fresh price, so the bond cannot be valued right now.";
       }
-      return { found: true as const, deal, bond, coverageBps, btcPrice, priceError };
+      return {
+        found: true as const,
+        deal,
+        bond,
+        coverageBps,
+        btcPrice,
+        priceError,
+        simulated,
+      };
     },
   });
 }

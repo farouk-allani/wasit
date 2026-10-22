@@ -4,7 +4,7 @@ import { Outlet } from "react-router";
 import { NetworkGuard } from "@/components/NetworkGuard";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
-import { SimulationNotice } from "@/components/layout/SimulationNotice";
+import { LiveSimulationNotice } from "@/components/layout/SimulationNotice";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { Providers } from "@/providers";
 
@@ -18,7 +18,7 @@ export function Component() {
     <Providers>
       <div className="flex min-h-dvh flex-col">
         <SkipLink />
-        <SimulationNotice />
+        <LiveSimulationNotice />
         <SiteHeader
           variant="app"
           actions={<ConnectButton chainStatus="icon" showBalance={false} accountStatus="address" />}

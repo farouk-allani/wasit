@@ -256,7 +256,7 @@ export function DealPage() {
       </Centered>
     );
 
-  const { deal, bond, coverageBps, btcPrice, priceError } = live.data;
+  const { deal, bond, coverageBps, btcPrice, priceError, simulated } = live.data;
   const snapshot: DealSnapshot = { deal, bond, coverageBps, now, account: address };
   const step = nextStep(snapshot);
   const actions = dealActions(snapshot);
@@ -325,6 +325,7 @@ export function DealPage() {
             coverageBps={coverageBps}
             btcPrice={btcPrice}
             priceError={priceError}
+            simulated={simulated}
             actions={actions}
             account={address}
             btcAllowance={funds.data?.btcAllowance}
