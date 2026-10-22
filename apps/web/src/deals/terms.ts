@@ -208,6 +208,23 @@ export function toDealTerms(
 /** Fee the escrow keeps on an amount, rounded down like `_fee` (ADR-018). */
 export const feeOn = (amount: bigint, feeBps: number) => (amount * BigInt(feeBps)) / BigInt(BPS);
 
+/** Where the money in a deal goes, per ARCHITECTURE §5: fees come off each payment. */
+export function summarize(
+  t: Pick<DealTerms, "advanceAmount" | "balanceAmount" | "feeBps" | "bondRatioBps">,
+) {
+  const advanceFee = feeOn(t.advanceAmount, t.feeBps);
+  const balanceFee = feeOn(t.balanceAmount, t.feeBps);
+  const netAdvance = t.advanceAmount - advanceFee;
+  return {
+    total: t.advanceAmount + t.balanceAmount,
+    advanceFee,
+    balanceFee,
+    netAdvance,
+    netBalance: t.balanceAmount - balanceFee,
+    bondTarget: (netAdvance * BigInt(t.bondRatioBps)) / BigInt(BPS),
+  };
+}
+
 /** keccak256 of a file's bytes, computed in the browser; the file never leaves the device. */
 export async function hashFile(file: Blob): Promise<Hex> {
   return keccak256(new Uint8Array(await file.arrayBuffer()));

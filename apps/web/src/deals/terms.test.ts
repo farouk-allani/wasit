@@ -1,6 +1,6 @@
 import { keccak256, toBytes, zeroAddress, type Address } from "viem";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VALUES, dealFormSchema, feeOn, hashFile, toDealTerms } from "./terms";
+import { DEFAULT_VALUES, dealFormSchema, feeOn, hashFile, summarize, toDealTerms } from "./terms";
 
 const buyer: Address = "0x00000000000000000000000000000000000000b1";
 const token: Address = "0x00000000000000000000000000000000000000aa";
@@ -95,5 +95,21 @@ describe("helpers", () => {
 
   it("hashes file bytes with keccak256", async () => {
     expect(await hashFile(new Blob(["terms"]))).toBe(keccak256(toBytes("terms")));
+  });
+});
+
+describe("summarize", () => {
+  it("splits a 3,000 + 7,000 MUSD deal like the escrow", () => {
+    const m = 10n ** 18n;
+    const s = summarize({
+      advanceAmount: 3_000n * m,
+      balanceAmount: 7_000n * m,
+      feeBps: 50,
+      bondRatioBps: 15_000,
+    });
+    expect(s.netAdvance).toBe(2_985n * m);
+    expect(s.netBalance).toBe(6_965n * m);
+    expect(s.advanceFee + s.balanceFee).toBe(50n * m);
+    expect(s.bondTarget).toBe(44_775n * (m / 10n));
   });
 });
