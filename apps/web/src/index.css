@@ -176,3 +176,55 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Price dial on the landing page. Fills from --lo to --hi (0..1 of the range) in --fill, measured
+ * from thumb centre to thumb centre so the fill meets the thumb exactly.
+ */
+.price-range {
+  --thumb: 22px;
+  --at-lo: calc(var(--lo) * (100% - var(--thumb)) + var(--thumb) / 2);
+  --at-hi: calc(var(--hi) * (100% - var(--thumb)) + var(--thumb) / 2);
+  appearance: none;
+  height: var(--thumb);
+  width: 100%;
+  cursor: pointer;
+  background:
+    linear-gradient(
+        to right,
+        transparent var(--at-lo),
+        var(--fill) var(--at-lo),
+        var(--fill) var(--at-hi),
+        transparent var(--at-hi)
+      )
+      center / 100% 6px no-repeat,
+    linear-gradient(var(--navy-700), var(--navy-700)) center / 100% 6px no-repeat;
+  border-radius: 999px;
+}
+.price-range::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 999px;
+  background: var(--navy-950);
+  border: 3px solid var(--gold-400);
+  box-shadow:
+    0 0 0 6px rgb(221 184 134 / 0.14),
+    0 6px 18px -6px var(--gold-500);
+  transition: box-shadow 150ms;
+}
+.price-range::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 999px;
+  background: var(--navy-950);
+  border: 3px solid var(--gold-400);
+  box-shadow:
+    0 0 0 6px rgb(221 184 134 / 0.14),
+    0 6px 18px -6px var(--gold-500);
+}
+.price-range:active::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 10px rgb(221 184 134 / 0.2),
+    0 6px 18px -6px var(--gold-500);
+}
