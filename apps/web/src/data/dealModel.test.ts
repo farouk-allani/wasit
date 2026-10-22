@@ -131,6 +131,19 @@ describe("reduceDeals", () => {
     });
   });
 
+  it("keeps the dispute's reason hash", () => {
+    const { log, logs } = opened(5n);
+    const reasonHash: Hex = `0x${"cd".repeat(32)}`;
+    const deal = reduceDeals([
+      ...logs,
+      log("Attested", attested(AttestationKind.ReadyInspected, 5n)),
+      log("BalanceFunded", { dealId: 5n, amount: e18(70) }),
+      log("Attested", attested(AttestationKind.Shipped, 5n)),
+      log("Disputed", { dealId: 5n, reasonHash }),
+    ]).get(5n);
+    expect(deal).toMatchObject({ state: DealState.Disputed, disputeReasonHash: reasonHash });
+  });
+
   it("reports a bond shortfall", () => {
     const { log, logs } = opened(4n);
     const deal = reduceDeals([

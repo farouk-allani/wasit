@@ -59,6 +59,8 @@ export interface DealView {
   refundedToBuyer: bigint;
   fees: bigint;
   bond: BondView;
+  /** keccak256 of the buyer's written reason, set by `Disputed`; the text itself stays off-chain. */
+  disputeReasonHash: Hex | undefined;
   timeline: TimelineEntry[];
   ledger: LedgerEntry[];
 }
@@ -106,6 +108,7 @@ export function reduceDeals(logs: readonly DealLog[]): Map<bigint, DealView> {
           lastCoverageBps: undefined,
           shortfall: 0n,
         },
+        disputeReasonHash: undefined,
         timeline: [],
         ledger: [],
       });
@@ -164,6 +167,7 @@ function apply(deal: DealView, log: DealLog) {
       break;
     case "Disputed":
       deal.state = DealState.Disputed;
+      deal.disputeReasonHash = log.args.reasonHash;
       break;
     case "Released":
       settle(DealState.Released);
