@@ -12,7 +12,10 @@ export const router = createBrowserRouter([
   {
     lazy: () => import("./routes/AppRoot"),
     children: [
-      { path: "/deals", element: <Placeholder title="My deals" /> },
+      {
+        path: "/deals",
+        lazy: () => import("./deals/DealsPage").then((m) => ({ Component: m.DealsPage })),
+      },
       {
         path: "/deals/new",
         lazy: () => import("./deals/NewDealPage").then((m) => ({ Component: m.NewDealPage })),

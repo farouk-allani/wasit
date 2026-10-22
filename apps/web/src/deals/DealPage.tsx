@@ -24,7 +24,7 @@ import {
 import { summarize } from "./terms";
 import { useDealLive, useNow, useWalletFunds } from "./useDealLive";
 
-const STATE: Record<
+export const DEAL_STATE: Record<
   number,
   { label: string; tone: "default" | "success" | "warning" | "destructive" | "outline" }
 > = {
@@ -261,7 +261,7 @@ export function DealPage() {
   const step = nextStep(snapshot);
   const actions = dealActions(snapshot);
   const roles = rolesOf(deal.terms, address);
-  const state = STATE[deal.state] ?? { label: "Unknown", tone: "outline" as const };
+  const state = DEAL_STATE[deal.state] ?? { label: "Unknown", tone: "outline" as const };
   const view = history.deal;
 
   return (
