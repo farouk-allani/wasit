@@ -27,7 +27,7 @@ const walletTheme = {
     profileForeground: "#0f1d2e",
     connectButtonBackground: "#142539",
   },
-  fonts: { body: '"Manrope Variable", ui-sans-serif, system-ui, sans-serif' },
+  fonts: { body: '"Mona Sans Variable", ui-sans-serif, system-ui, sans-serif' },
 };
 
 export function Providers({ children }: { children: ReactNode }) {
