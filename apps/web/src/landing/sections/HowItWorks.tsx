@@ -1,28 +1,28 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { Icon3D, type Icon3DName } from "../icons/Icon3D";
+import { AdvanceIcon, AttestationIcon, SettleIcon, TermsIcon } from "../icons/StepIcons";
 import { exampleDeal, params, percent, usd } from "../params";
 import { Reveal } from "../Reveal";
 
-const STEPS: { icon: Icon3DName; title: string; body: string }[] = [
+const STEPS: { icon: typeof TermsIcon; title: string; body: string }[] = [
   {
-    icon: "handshake",
+    icon: TermsIcon,
     title: "Agree the terms",
     body: "Amounts, deadlines, who attests and the arbiter are fixed before any money moves.",
   },
   {
-    icon: "money-bag",
+    icon: AdvanceIcon,
     title: "Advance, backed by BTC",
     body: "The buyer pays 30% in MUSD. The supplier, or their sourcing agent, locks a BTC bond.",
   },
   {
-    icon: "package",
+    icon: AttestationIcon,
     title: "Signed attestations",
     body: "An inspector signs that the goods are ready, a carrier that they shipped.",
   },
   {
-    icon: "balance-scale",
+    icon: SettleIcon,
     title: "Release or refund",
     body: "After a challenge window the 70% goes to the supplier. Disputes go to the arbiter.",
   },
@@ -61,7 +61,7 @@ export function HowItWorks() {
           </Reveal>
 
           <ol className="grid content-start gap-x-4 gap-y-8 pt-4 sm:grid-cols-2 xl:grid-cols-4 [&>li]:h-full">
-            {STEPS.map(({ icon, title, body }, i) => (
+            {STEPS.map(({ icon: StepIcon, title, body }, i) => (
               <li key={title}>
                 <Reveal delay={i * 100} className="h-full">
                   <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card px-5 pt-7 pb-4 shadow-[0_1px_0_rgb(17_26_38/0.04),0_16px_40px_-28px_rgb(17_26_38/0.45)]">
@@ -70,7 +70,7 @@ export function HowItWorks() {
                     </span>
                     <h3 className="text-[1.05rem] font-semibold">{title}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-                    <Icon3D name={icon} className="mx-auto mt-auto size-20 pt-3" />
+                    <StepIcon className="mx-auto mt-auto pt-3" />
                   </div>
                 </Reveal>
               </li>
