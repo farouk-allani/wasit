@@ -9,6 +9,7 @@ export const params = {
   feeBps: BigInt(config.feeBps),
   topUpRatioBps: config.topUpRatioBps,
   protectRatioBps: config.protectRatioBps,
+  maxSlippageBps: config.maxSlippageBps,
 };
 
 export const percent = (bps: number | bigint) => `${Number(bps) / 100}%`;
