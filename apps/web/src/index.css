@@ -1,2 +1,175 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+/* Self-hosted fonts: no third-party font CDN. Arabic loads only when Arabic glyphs render. */
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/jost";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-400.css";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+/*
+ * Brand palette (Farouk's brand sheet, 2026-10-22): night navy, champagne gold, steel, ivory.
+ * The app is dark by default; `.theme-paper` re-maps the same semantic tokens to ivory paper for
+ * light sections and documents. Components use semantic tokens only, never raw palette values.
+ */
+:root {
+  --navy-950: #070f19;
+  --navy-900: #0b1624;
+  --navy-850: #0f1d2e;
+  --navy-800: #142539;
+  --navy-700: #1d3149;
+  --navy-600: #2a405b;
+  --steel-400: #8e9bb0;
+  --steel-300: #b4bfcf;
+  --gold-600: #a97f4b;
+  --gold-500: #c99e68;
+  --gold-400: #ddb886;
+  --gold-300: #ecd2ab;
+  --ivory-100: #f6f2ea;
+  --ivory-200: #ece5d8;
+  --sand-300: #d7c2a2;
+  --ink-900: #111a26;
+
+  --background: var(--navy-900);
+  --foreground: #edf1f6;
+  --card: var(--navy-850);
+  --card-foreground: var(--foreground);
+  --popover: var(--navy-800);
+  --popover-foreground: var(--foreground);
+  --primary: var(--gold-400);
+  --primary-foreground: var(--navy-950);
+  --secondary: var(--navy-700);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--navy-800);
+  --muted-foreground: #9aa8ba;
+  --accent: var(--navy-700);
+  --accent-foreground: var(--foreground);
+  --destructive: #e8735f;
+  --success: #5cc49a;
+  --warning: #e7b057;
+  --border: rgb(180 191 207 / 0.14);
+  --input: rgb(180 191 207 / 0.22);
+  --ring: var(--gold-400);
+  --gold: var(--gold-400);
+  --radius: 0.75rem;
+}
+
+.theme-paper {
+  --background: var(--ivory-100);
+  --foreground: var(--ink-900);
+  --card: #fffdf9;
+  --card-foreground: var(--ink-900);
+  --popover: #fffdf9;
+  --popover-foreground: var(--ink-900);
+  --primary: var(--navy-900);
+  --primary-foreground: var(--ivory-100);
+  --secondary: var(--ivory-200);
+  --secondary-foreground: var(--ink-900);
+  --muted: var(--ivory-200);
+  --muted-foreground: #5b6574;
+  --accent: var(--ivory-200);
+  --accent-foreground: var(--ink-900);
+  --destructive: #b5432f;
+  --success: #23805d;
+  --warning: #9a6514;
+  --border: rgb(17 26 38 / 0.1);
+  --input: rgb(17 26 38 / 0.18);
+  --ring: var(--gold-600);
+  --gold: var(--gold-600);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@theme inline {
+  --font-sans: "Manrope Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Jost Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-850: var(--navy-850);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-steel-300: var(--steel-300);
+  --color-steel-400: var(--steel-400);
+  --color-ivory-100: var(--ivory-100);
+  --color-ivory-200: var(--ivory-200);
+  --color-sand-300: var(--sand-300);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  ::selection {
+    background: rgb(221 184 134 / 0.35);
+  }
+}
+
+@utility eyebrow {
+  @apply font-display text-xs font-medium tracking-[0.32em] text-gold uppercase;
+}
+
+@utility amount {
+  @apply font-sans tabular-nums;
+  font-feature-settings: "tnum", "zero";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
