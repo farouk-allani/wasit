@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Landing from "./landing/Landing";
 import { MarketingLayout } from "./routes/MarketingLayout";
-import { Placeholder } from "./routes/Placeholder";
+import { NotFound } from "./routes/NotFound";
 
 // Routes from ARCHITECTURE §10. A static host must serve index.html for every path (PLAN 4.9).
 export const router = createBrowserRouter([
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
         path: "/arbiter/:id",
         lazy: () => import("./arbiter/ArbiterPage").then((m) => ({ Component: m.ArbiterPage })),
       },
-      { path: "*", element: <Placeholder title="Not found" /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
