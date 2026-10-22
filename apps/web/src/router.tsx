@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import Landing from "./landing/Landing";
 import { AppLayout, MarketingLayout } from "./routes/layouts";
 import { Placeholder } from "./routes/Placeholder";
 
@@ -6,7 +7,7 @@ import { Placeholder } from "./routes/Placeholder";
 export const router = createBrowserRouter([
   {
     element: <MarketingLayout />,
-    children: [{ path: "/", element: <Placeholder title="Wasit" /> }],
+    children: [{ path: "/", element: <Landing /> }],
   },
   {
     element: <AppLayout />,
