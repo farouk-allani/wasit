@@ -76,5 +76,5 @@ final, so preview without signing.
 
 ## Words to avoid
 
-Do not say "guaranteed", "trustless" or "risk-free". Say "BTC-secured, with limits". A document
-hash shows a file was not changed; it does not prove shipment.
+Use the README wording, "BTC-secured, with limits", and make no absolute promise of safety. A
+document hash shows a file was not changed; it does not prove shipment.
