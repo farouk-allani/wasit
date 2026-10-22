@@ -76,7 +76,7 @@ export function Hero() {
           )}
           <FlowCard
             className="start-0 top-[8%]"
-            icon={<Icon3D name="dollar-coin" />}
+            icon={<Icon3D name="dollar-banknote" />}
             title="Buyer"
             delay="delay-700"
           >
@@ -84,7 +84,7 @@ export function Hero() {
           </FlowCard>
           <FlowCard
             className="-end-2 top-[34%] xl:-end-6"
-            icon={<Icon3D name="btc-coin" />}
+            icon={<Icon3D name="coin" />}
             title="Supplier or agent"
             delay="delay-1000"
           >
@@ -92,7 +92,7 @@ export function Hero() {
           </FlowCard>
           <FlowCard
             className="start-[10%] bottom-[9%]"
-            icon={<Icon3D name="padlock" />}
+            icon={<Icon3D name="locked" />}
             title="Wasit escrow"
             delay="delay-[1300ms]"
           >

@@ -16,7 +16,7 @@ const COLUMNS: { title: string; icon: Icon3DName; items: string[] }[] = [
   },
   {
     title: "Honest limits",
-    icon: "alert",
+    icon: "warning",
     items: [
       "The bond secures only the advance, and only up to what it is worth.",
       "Attestations are signed statements by named parties, not proof of truth. The challenge window and the arbiter exist for that reason.",
