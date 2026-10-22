@@ -1,6 +1,5 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,15 @@ const appNav = [
 
 /**
  * `marketing` floats over the landing hero and turns solid once the page scrolls; `app` is solid
- * and carries the wallet button.
+ * and shows `actions` (the wallet button, which lives in the lazily loaded app shell).
  */
-export function SiteHeader({ variant }: { variant: "marketing" | "app" }) {
+export function SiteHeader({
+  variant,
+  actions,
+}: {
+  variant: "marketing" | "app";
+  actions?: ReactNode;
+}) {
   const scrolled = useScrolled(24);
   const solid = variant === "app" || scrolled;
   return (
@@ -73,7 +78,7 @@ export function SiteHeader({ variant }: { variant: "marketing" | "app" }) {
               </Link>
             </Button>
           ) : (
-            <ConnectButton chainStatus="icon" showBalance={false} accountStatus="address" />
+            actions
           )}
         </div>
       </div>
