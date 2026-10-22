@@ -10,8 +10,8 @@ export default function Landing() {
   return (
     <>
       <Hero />
-      <Context />
       <HowItWorks />
+      <Context />
       <Protection />
       <Principles />
       <ClosingCta />
