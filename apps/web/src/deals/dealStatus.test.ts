@@ -8,6 +8,7 @@ const SUPPLIER: Address = "0xAE52F1f55BD606cF385E7EE6D85E7c689D0CCE77";
 const AGENT: Address = "0x45Be78315AEc0372011db5c526445eFEB86B65Cf";
 const SIGNER: Address = "0xb81e05e23A4b0030173B78A20757Bbe9b749c9e9";
 const ARBITER: Address = "0x400b1e116dF4e79b9d34641Dc79175c7BC1aeD36";
+const MUSD: Address = "0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503";
 const KEEPER: Address = "0x1111111111111111111111111111111111111111";
 const T0 = 1_792_000_000n;
 
@@ -20,7 +21,7 @@ function deal(overrides: Partial<Deal> = {}, bonder: Address = AGENT): Deal {
       carrier: SIGNER,
       arbiter: ARBITER,
       bonder,
-      token: "0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503",
+      token: MUSD,
       advanceAmount: 30n * 10n ** 18n,
       balanceAmount: 70n * 10n ** 18n,
       feeBps: 50,
