@@ -3,7 +3,7 @@ import { BrandLockup } from "@/components/brand/BrandLockup";
 import { useDeployment } from "@/deployment";
 import { explorerAddress, REPO_URL } from "@/lib/links";
 
-/** Every page ends with what Wasit is, where it runs, and the wording HALAL.md requires. */
+/** Every page ends with what Wasit is, where it runs, and that it is not audited. */
 export function SiteFooter() {
   const deployment = useDeployment();
   return (
@@ -32,7 +32,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-border">
         <p className="mx-auto max-w-7xl px-4 py-5 text-xs tracking-wide text-muted-foreground sm:px-6 lg:px-8">
-          Mezo testnet · Designed to avoid interest; Shariah review pending · Not audited
+          Mezo testnet · Not audited
         </p>
       </div>
     </footer>

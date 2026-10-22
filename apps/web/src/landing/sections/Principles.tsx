@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react";
 import { REPO_URL } from "@/lib/links";
 import { Reveal } from "../Reveal";
 
-const COLUMNS: { title: string; note?: string; items: string[] }[] = [
+const COLUMNS: { title: string; items: string[] }[] = [
   {
     title: "Enforced by the contracts",
     items: [
@@ -21,19 +21,9 @@ const COLUMNS: { title: string; note?: string; items: string[] }[] = [
       "MUSD is treated as one dollar. Testnet only; internally reviewed, not audited.",
     ],
   },
-  {
-    title: "Designed to avoid interest",
-    note: "Shariah review pending",
-    items: [
-      "No lending or borrowing anywhere in a deal.",
-      "No yield on held funds: escrow and bond collateral are never deposited, staked or lent.",
-      "Fees pay for the service: only on value settled to the supplier, never on refunds, never by time.",
-      "The bonder is not paid for guaranteeing, and every amount, party and deadline is fixed before money moves.",
-    ],
-  },
 ];
 
-/** What the code enforces, what it cannot, and the HALAL.md constraints, in plain words. */
+/** What the code enforces and what it cannot, in plain words. */
 export function Principles() {
   return (
     <section
@@ -52,16 +42,11 @@ export function Principles() {
           </h2>
         </Reveal>
 
-        <div className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+        <div className="mt-14 grid gap-10 md:grid-cols-2 md:gap-8">
           {COLUMNS.map((column, i) => (
             <Reveal key={column.title} delay={i * 100} className="space-y-5">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-4">
                 <h3 className="text-lg font-semibold">{column.title}</h3>
-                {column.note && (
-                  <span className="text-xs font-semibold tracking-wide text-gold uppercase">
-                    {column.note}
-                  </span>
-                )}
               </div>
               <ul className="space-y-4">
                 {column.items.map((item) => (
