@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { type CSSProperties, useId, useState } from "react";
 import { BondGauge, coverageZone, type CoverageZone } from "@/components/BondGauge";
 import { cn } from "@/lib/utils";
 import { params, percent } from "../params";
@@ -26,6 +26,32 @@ const RULES: { zone: CoverageZone; threshold: string; title: string; body: strin
     body: `Anyone can lock in the bond's value: its BTC is swapped to MUSD on Mezo's router, within ${percent(params.maxSlippageBps)} of the oracle price.`,
   },
 ];
+
+const MIN_MOVE = -50;
+const MAX_MOVE = 30;
+/** Where a price move sits along the dial, 0..1. */
+const at = (move: number) => (move - MIN_MOVE) / (MAX_MOVE - MIN_MOVE);
+
+// From a 150% bond: 180% covered, 150% covered, 127.5% top up, 112.5% protect, 90% below the advance
+const SCENARIOS = [
+  { label: "Rally +20%", move: 20 },
+  { label: "Flat", move: 0 },
+  { label: "Dip −15%", move: -15 },
+  { label: "Slide −25%", move: -25 },
+  { label: "Crash −40%", move: -40 },
+];
+
+const FILL: Record<CoverageZone, string> = {
+  healthy: "success",
+  topUp: "warning",
+  protect: "destructive",
+};
+
+const ZONE_TEXT: Record<CoverageZone, string> = {
+  healthy: "text-success",
+  topUp: "text-warning",
+  protect: "text-destructive",
+};
 
 const ACCENT: Record<CoverageZone, string> = {
   healthy: "bg-success",
@@ -113,24 +139,67 @@ export function Protection() {
             topUpBps={params.topUpRatioBps}
             protectBps={params.protectRatioBps}
           />
-          <div className="mx-auto mt-10 max-w-sm space-y-3">
-            <label htmlFor={sliderId} className="flex items-baseline justify-between gap-4">
-              <span className="eyebrow text-steel-300">Move BTC&apos;s price</span>
-              <span className="amount text-sm font-semibold">
-                {move > 0 ? "+" : ""}
-                {move}%
+          <div className="mx-auto mt-10 max-w-md space-y-5">
+            <div className="flex items-end justify-between gap-4">
+              <label htmlFor={sliderId} className="eyebrow text-steel-300">
+                BTC since the bond was posted
+              </label>
+              <span className={cn("amount text-2xl font-semibold tracking-tight", ZONE_TEXT[zone])}>
+                {move > 0 ? "+" : move < 0 ? "−" : ""}
+                {Math.abs(move)}%
               </span>
-            </label>
-            <input
-              id={sliderId}
-              type="range"
-              min={-50}
-              max={30}
-              step={1}
-              value={move}
-              onChange={(event) => setMove(Number(event.target.value))}
-              className="w-full accent-gold-400"
-            />
+            </div>
+
+            <div>
+              <input
+                id={sliderId}
+                type="range"
+                min={MIN_MOVE}
+                max={MAX_MOVE}
+                step={1}
+                value={move}
+                onChange={(event) => setMove(Number(event.target.value))}
+                aria-valuetext={`BTC ${move > 0 ? "up" : "down"} ${Math.abs(move)}%`}
+                className="price-range"
+                style={
+                  {
+                    "--lo": Math.min(at(move), at(0)),
+                    "--hi": Math.max(at(move), at(0)),
+                    "--fill": `var(--${FILL[zone]})`,
+                  } as CSSProperties
+                }
+              />
+              <div
+                aria-hidden
+                className="relative mx-2.75 mt-1 h-4 text-[11px] text-muted-foreground"
+              >
+                {[MIN_MOVE, -25, 0, MAX_MOVE].map((mark) => (
+                  <span
+                    key={mark}
+                    className="amount absolute -translate-x-1/2"
+                    style={{ left: `${at(mark) * 100}%` }}
+                  >
+                    {mark > 0 ? "+" : mark < 0 ? "−" : ""}
+                    {Math.abs(mark)}%
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div role="group" aria-label="Price scenarios" className="flex flex-wrap gap-2">
+              {SCENARIOS.map((scenario) => (
+                <button
+                  key={scenario.label}
+                  type="button"
+                  aria-pressed={move === scenario.move}
+                  onClick={() => setMove(scenario.move)}
+                  className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:border-gold/60 hover:text-foreground aria-pressed:border-gold aria-pressed:bg-gold/10 aria-pressed:text-gold"
+                >
+                  {scenario.label}
+                </button>
+              ))}
+            </div>
+
             <p aria-live="polite" className="min-h-[2lh] text-sm text-muted-foreground">
               {coverageBps < 10_000
                 ? "Below the advance. A bond protected earlier kept its locked-in value."
