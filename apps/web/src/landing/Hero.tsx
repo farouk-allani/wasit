@@ -1,12 +1,4 @@
-import {
-  ArrowLeftRight,
-  ArrowRight,
-  Bitcoin,
-  ChartLine,
-  CircleDollarSign,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { lazy, Suspense, useCallback, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -16,25 +8,29 @@ import portDuskGlobe1280 from "./assets/port-dusk-globe-1280.webp";
 import portDuskGlobe from "./assets/port-dusk-globe.webp";
 import portDusk from "./assets/port-dusk.webp";
 import { Icon3D } from "./icons/Icon3D";
+import bitcoinLogo from "./logos/bitcoin.svg";
+import mezoCircle from "./logos/mezo-circle.svg";
+import mezoWordmark from "./logos/mezo-wordmark-white.svg";
+import musdLogo from "./logos/musd.svg";
+import skipLogo from "./logos/skip.webp";
 import { supportsWebGL } from "./webgl";
 
 const GlobeCanvas = lazy(() => import("./globe/GlobeCanvas"));
 
 // Only what Wasit actually uses on Mezo (ADR-024): no logos of services it does not integrate
 const SETTLES: StackItem[] = [
-  { icon: CircleDollarSign, label: "MUSD", tone: "bg-sky-500/15 text-sky-300" },
-  { icon: Bitcoin, label: "Native BTC", tone: "bg-orange-500/15 text-orange-300" },
+  { logo: musdLogo, label: "MUSD" },
+  { logo: bitcoinLogo, label: "Native BTC" },
 ];
 const INTEGRATES: StackItem[] = [
-  { icon: Wallet, label: "Passport", tone: "bg-teal-500/15 text-teal-300" },
-  { icon: ChartLine, label: "Skip price feed", tone: "bg-violet-500/15 text-violet-300" },
-  { icon: ArrowLeftRight, label: "Swap router", tone: "bg-blue-500/15 text-blue-300" },
+  { logo: mezoCircle, label: "Passport" },
+  { logo: skipLogo, label: "Skip price feed" },
+  { logo: mezoCircle, label: "Mezo Pools" },
 ];
 
 interface StackItem {
-  icon: LucideIcon;
+  logo: string;
   label: string;
-  tone: string;
 }
 
 export function Hero() {
@@ -129,9 +125,7 @@ export function Hero() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-7 gap-y-5 px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-1">
             <p className="eyebrow text-[0.6rem] text-steel-300">Built on</p>
-            <span className="block text-2xl leading-none font-bold tracking-[0.06em] font-stretch-expanded">
-              MEZO
-            </span>
+            <img src={mezoWordmark} alt="Mezo" width={4098} height={566} className="h-5 w-auto" />
           </div>
           <StackGroup label="Settles in" items={SETTLES} />
           <StackGroup label="Integrates with" items={INTEGRATES} />
@@ -189,11 +183,9 @@ function StackGroup({ label, items }: { label: string; items: StackItem[] }) {
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3 lg:border-s lg:border-white/10 lg:ps-7">
       <p className="eyebrow text-[0.65rem] text-steel-300">{label}</p>
       <ul className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        {items.map(({ icon: Icon, label: name, tone }) => (
-          <li key={name} className="flex items-center gap-2 text-[0.9rem] font-medium">
-            <span className={cn("grid size-8 place-items-center rounded-lg", tone)}>
-              <Icon aria-hidden className="size-[1.1rem]" />
-            </span>
+        {items.map(({ logo, label: name }) => (
+          <li key={name} className="flex items-center gap-2.5 text-[0.95rem] font-medium">
+            <img src={logo} alt="" width={28} height={28} className="size-7 rounded-full" />
             {name}
           </li>
         ))}
