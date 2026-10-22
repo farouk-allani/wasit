@@ -21,7 +21,10 @@ export const router = createBrowserRouter([
         path: "/deals/:id",
         lazy: () => import("./deals/DealPage").then((m) => ({ Component: m.DealPage })),
       },
-      { path: "/attest/:id", element: <Placeholder title="Attest" /> },
+      {
+        path: "/attest/:id",
+        lazy: () => import("./attest/AttestPage").then((m) => ({ Component: m.AttestPage })),
+      },
       { path: "/arbiter/:id", element: <Placeholder title="Arbiter" /> },
       { path: "*", element: <Placeholder title="Not found" /> },
     ],
