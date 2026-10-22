@@ -1,6 +1,6 @@
 # Wasit
 
-Wasit (وسيط, "the trusted middleman") protects advance payments in stablecoin trade on Mezo.
+Wasit protects advance payments in stablecoin trade on Mezo.
 A buyer's production advance can be secured by a BTC bond, and the balance waits in MUSD
 escrow until named parties sign off.
 
