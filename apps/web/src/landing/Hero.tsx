@@ -1,4 +1,12 @@
-import { ArrowRight } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Bitcoin,
+  ChartLine,
+  CircleDollarSign,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { lazy, Suspense, useCallback, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -12,13 +20,22 @@ import { supportsWebGL } from "./webgl";
 
 const GlobeCanvas = lazy(() => import("./globe/GlobeCanvas"));
 
-const STACK = [
-  "MUSD settlement",
-  "Native BTC bond",
-  "Skip price feed",
-  "Mezo swap router",
-  "Mezo Passport",
+// Only what Wasit actually uses on Mezo (ADR-024): no logos of services it does not integrate
+const SETTLES: StackItem[] = [
+  { icon: CircleDollarSign, label: "MUSD", tone: "bg-sky-500/15 text-sky-300" },
+  { icon: Bitcoin, label: "Native BTC", tone: "bg-orange-500/15 text-orange-300" },
 ];
+const INTEGRATES: StackItem[] = [
+  { icon: Wallet, label: "Passport", tone: "bg-teal-500/15 text-teal-300" },
+  { icon: ChartLine, label: "Skip price feed", tone: "bg-violet-500/15 text-violet-300" },
+  { icon: ArrowLeftRight, label: "Swap router", tone: "bg-blue-500/15 text-blue-300" },
+];
+
+interface StackItem {
+  icon: LucideIcon;
+  label: string;
+  tone: string;
+}
 
 export function Hero() {
   const [webgl, setWebgl] = useState(supportsWebGL);
@@ -41,14 +58,15 @@ export function Hero() {
       <div className="absolute inset-0 -z-10 bg-linear-to-t from-navy-950 via-navy-950/85 to-navy-950/10 lg:bg-linear-to-r lg:from-navy-950 lg:via-navy-950/75 lg:to-navy-950/10 lg:rtl:bg-linear-to-l" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-linear-to-t from-navy-950 to-transparent" />
 
-      <div className="mx-auto grid min-h-[min(100svh,58rem)] max-w-7xl items-center gap-6 px-4 pt-28 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:px-8 lg:pt-24">
-        <div className="relative z-10 max-w-xl space-y-7">
+      <div className="mx-auto grid min-h-[min(86svh,48rem)] max-w-7xl items-center gap-6 px-4 pt-28 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:px-8 lg:pt-20 lg:pb-6">
+        <div className="relative z-10 max-w-[40rem] space-y-7">
           <p className="eyebrow">Protected advance payments · Built on Mezo</p>
           <h1
             id="hero-title"
-            className="text-[2.6rem] leading-[1.04] font-semibold tracking-[-0.025em] text-balance sm:text-6xl"
+            className="text-[2.6rem] leading-[1.04] font-semibold tracking-[-0.025em] text-balance sm:text-6xl sm:text-wrap"
           >
-            Trade across borders with <span className="text-gold">confidence.</span>
+            Trade across borders <br className="hidden sm:block" />
+            with <span className="text-gold">confidence.</span>
           </h1>
           <p className="max-w-lg text-lg leading-relaxed text-foreground/80">
             Pay a supplier&apos;s production advance in MUSD without paying blind. A BTC bond backs
@@ -67,7 +85,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative -order-1 mx-auto aspect-square w-full max-w-[22rem] sm:max-w-md lg:order-none lg:max-w-none">
+        <div className="relative -order-1 mx-auto aspect-square w-full max-w-[22rem] sm:max-w-md lg:order-none lg:-my-8 lg:max-w-none">
           <div className="absolute inset-x-[12%] bottom-[2%] h-[14%] rounded-[50%] bg-gold-400/25 blur-3xl" />
           {webgl && (
             <Suspense fallback={null}>
@@ -75,26 +93,29 @@ export function Hero() {
             </Suspense>
           )}
           <FlowCard
-            className="start-0 top-[8%]"
+            className="start-0 top-[16%]"
             icon={<Icon3D name="dollar-banknote" />}
             title="Buyer"
             delay="delay-700"
+            status="Advance paid"
           >
             Pays the 30% advance in MUSD, straight to the supplier
           </FlowCard>
           <FlowCard
-            className="-end-2 top-[34%] xl:-end-6"
+            className="-end-2 top-[4%] xl:-end-6"
             icon={<Icon3D name="coin" />}
             title="Supplier or agent"
             delay="delay-1000"
+            status="Bond posted"
           >
             Posts a BTC bond that backs the advance
           </FlowCard>
           <FlowCard
-            className="start-[10%] bottom-[9%]"
+            className="end-[4%] bottom-[10%]"
             icon={<Icon3D name="locked" />}
             title="Wasit escrow"
             delay="delay-[1300ms]"
+            status="Awaiting attestations"
           >
             Holds the 70% balance until signed release
           </FlowCard>
@@ -102,16 +123,13 @@ export function Hero() {
       </div>
 
       <div className="border-t border-white/10 bg-navy-950/70 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-3 px-4 py-5 sm:px-6 lg:px-8">
-          <p className="eyebrow text-steel-300">Built on Mezo</p>
-          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-foreground/75">
-            {STACK.map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span aria-hidden className="size-1 rounded-full bg-gold" />
-                {item}
-              </li>
-            ))}
-          </ul>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-7 gap-y-5 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <p className="eyebrow text-[0.65rem] text-steel-300">Built on</p>
+            <span className="text-xl font-bold tracking-[0.08em] font-stretch-expanded">MEZO</span>
+          </div>
+          <StackGroup label="Settles in" items={SETTLES} />
+          <StackGroup label="Integrates with" items={INTEGRATES} />
         </div>
       </div>
     </section>
@@ -124,12 +142,14 @@ function FlowCard({
   icon,
   title,
   delay,
+  status,
   children,
 }: {
   className?: string;
   icon: ReactNode;
   title: string;
   delay: string;
+  status: string;
   children: ReactNode;
 }) {
   return (
@@ -144,7 +164,33 @@ function FlowCard({
       <span className="space-y-1">
         <span className="block text-sm font-semibold">{title}</span>
         <span className="block text-[0.8rem] leading-snug text-foreground/70">{children}</span>
+        <span className="flex items-center gap-1.5 pt-0.5 text-xs font-medium text-success">
+          <span
+            aria-hidden
+            className="size-1.5 rounded-full bg-success shadow-[0_0_8px_var(--success)]"
+          />
+          {status}
+        </span>
       </span>
+    </div>
+  );
+}
+
+/** One labelled group of the "Built on Mezo" strip, set off by a divider on wide screens. */
+function StackGroup({ label, items }: { label: string; items: StackItem[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-3 lg:border-s lg:border-white/10 lg:ps-7">
+      <p className="eyebrow text-[0.65rem] text-steel-300">{label}</p>
+      <ul className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        {items.map(({ icon: Icon, label: name, tone }) => (
+          <li key={name} className="flex items-center gap-2 text-[0.9rem] font-medium">
+            <span className={cn("grid size-8 place-items-center rounded-lg", tone)}>
+              <Icon aria-hidden className="size-[1.1rem]" />
+            </span>
+            {name}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
