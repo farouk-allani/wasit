@@ -6,91 +6,57 @@ const OUTPUT = /* glsl */ `
   #include <colorspace_fragment>
 `;
 
-/** Night ocean: lit from the sunset side, blue rim, faint 15° graticule. */
+/**
+ * The Earth at dusk: NASA Blue Marble relief, dimmed and cooled on the night side, with Black
+ * Marble city lights glowing where the sun has set. Warm rim toward the sunset, blue limb.
+ */
 export const surface = {
   vertex: /* glsl */ `
     varying vec3 vNormalW;
     varying vec3 vPosW;
-    varying vec3 vNormalO;
+    varying vec2 vUv;
     void main() {
       vec4 world = modelMatrix * vec4(position, 1.0);
       vPosW = world.xyz;
       vNormalW = normalize(mat3(modelMatrix) * normal);
-      vNormalO = normal;
+      vUv = uv;
       gl_Position = projectionMatrix * viewMatrix * world;
     }
   `,
   fragment: /* glsl */ `
+    uniform sampler2D uDayMap;
+    uniform sampler2D uLightsMap;
     uniform vec3 uSun;
-    uniform vec3 uNight;
-    uniform vec3 uDay;
+    uniform vec3 uNightTint;
     uniform vec3 uRim;
     uniform vec3 uWarm;
+    uniform vec3 uCity;
     varying vec3 vNormalW;
     varying vec3 vPosW;
-    varying vec3 vNormalO;
-
-    float gridLine(float deg, float step) {
-      float d = abs(fract(deg / step + 0.5) - 0.5) * step;
-      return 1.0 - smoothstep(0.0, fwidth(deg) * 1.2, d);
-    }
+    varying vec2 vUv;
 
     void main() {
       vec3 n = normalize(vNormalW);
       vec3 v = normalize(cameraPosition - vPosW);
       float light = dot(n, uSun);
-      vec3 color = mix(uNight, uDay, smoothstep(-0.35, 0.95, light));
-      float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-      color += uRim * fresnel * 0.35;
-      color += uWarm * pow(max(light, 0.0), 4.0) * fresnel * 1.4;
-      vec3 h = normalize(uSun + v);
-      color += uWarm * pow(max(dot(n, h), 0.0), 80.0) * 0.18;
+      // Mostly night: the sunset reaches only the limb on the sun's side
+      float limb = 1.0 - max(dot(n, v), 0.0);
+      float daylight = smoothstep(0.3, 0.9, light) * smoothstep(0.25, 0.8, limb);
 
-      vec3 o = normalize(vNormalO);
-      float lat = degrees(asin(o.y));
-      float lon = degrees(atan(-o.z, o.x));
-      float grid = max(gridLine(lat, 15.0), gridLine(lon, 15.0) * (1.0 - smoothstep(70.0, 85.0, abs(lat))));
-      color += uRim * grid * 0.07;
+      vec3 relief = texture2D(uDayMap, vUv).rgb;
+      vec3 color = mix(relief * uNightTint, relief * uWarm * 0.45, daylight);
+
+      // Black Marble also shows moonlit deserts; keep only the bright city lights
+      float city = smoothstep(0.22, 0.85, texture2D(uLightsMap, vUv).r);
+      color += uCity * city * mix(2.6, 0.6, daylight);
+
+      float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+      color += uRim * fresnel * 0.45;
+      color += uWarm * pow(max(light, 0.0), 3.0) * fresnel * 1.6;
+      vec3 h = normalize(uSun + v);
+      color += uWarm * pow(max(dot(n, h), 0.0), 60.0) * 0.25;
 
       gl_FragColor = vec4(color, 1.0);
-      ${OUTPUT}
-    }
-  `,
-};
-
-/** Land as faint steel points; one in nine is a gold "city" light that twinkles. */
-export const landDots = {
-  vertex: /* glsl */ `
-    attribute float aSeed;
-    uniform float uSize;
-    uniform float uPixelRatio;
-    uniform float uTime;
-    uniform vec3 uSun;
-    varying float vAlpha;
-    varying float vCity;
-    void main() {
-      vec4 world = modelMatrix * vec4(position, 1.0);
-      vec3 n = normalize(world.xyz);
-      vec4 mv = viewMatrix * world;
-      float facing = dot(n, normalize(cameraPosition - world.xyz));
-      float day = smoothstep(-0.25, 0.6, dot(n, uSun));
-      float city = step(0.89, aSeed);
-      vCity = city * (0.7 + 0.3 * sin(uTime * 1.3 + aSeed * 90.0));
-      float land = 0.2 + 0.28 * day;
-      vAlpha = smoothstep(0.0, 0.3, facing) * mix(land, 0.75 + 0.25 * vCity, city);
-      gl_PointSize = uSize * uPixelRatio * (1.0 + city * 0.5) * (6.0 / -mv.z);
-      gl_Position = projectionMatrix * mv;
-    }
-  `,
-  fragment: /* glsl */ `
-    uniform vec3 uColor;
-    uniform vec3 uCity;
-    varying float vAlpha;
-    varying float vCity;
-    void main() {
-      float d = length(gl_PointCoord - 0.5);
-      float disc = smoothstep(0.5, 0.15, d);
-      gl_FragColor = vec4(mix(uColor, uCity, step(0.01, vCity)), disc * vAlpha);
       ${OUTPUT}
     }
   `,

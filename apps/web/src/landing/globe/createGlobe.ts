@@ -15,14 +15,17 @@ import {
   ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
+  TextureLoader,
   Timer,
   TubeGeometry,
   Vector3,
   WebGLRenderer,
   type Material,
 } from "three";
-import { fibonacciPoint, fromLatLon } from "./geo";
-import { isLand, LAND_SAMPLES } from "./landMask";
+// NASA Visible Earth (public domain): Blue Marble relief, Black Marble 2016 city lights
+import earthDay from "./earth-day.webp";
+import earthLights from "./earth-night.webp";
+import { fromLatLon } from "./geo";
 import { ribbonGeometry, type RibbonShape } from "./ribbon";
 import * as glsl from "./shaders";
 
@@ -81,6 +84,8 @@ const CAMERA_Z = 5.3;
 export interface GlobeOptions {
   reducedMotion: boolean;
   onFirstFrame?: () => void;
+  /** A texture failed to load: the caller shows its still fallback instead. */
+  onError?: (error: unknown) => void;
 }
 
 export interface Globe {
@@ -121,6 +126,25 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
   tilt.add(spin);
   scene.add(tilt);
 
+  // Nothing is drawn until both maps have arrived, so the globe never fades in blank
+  let pending = 2;
+  const loader = new TextureLoader();
+  const loadMap = (url: string) => {
+    const map = loader.load(
+      url,
+      () => {
+        if (--pending === 0 && still) render();
+      },
+      undefined,
+      (error) => options.onError?.(error),
+    );
+    map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    return map;
+  };
+  const dayMap = loadMap(earthDay);
+  dayMap.colorSpace = SRGBColorSpace;
+  const lightsMap = loadMap(earthLights);
+
   const sphere = new SphereGeometry(1, 96, 64);
   spin.add(
     new Mesh(
@@ -129,17 +153,18 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
         vertexShader: glsl.surface.vertex,
         fragmentShader: glsl.surface.fragment,
         uniforms: {
+          uDayMap: { value: dayMap },
+          uLightsMap: { value: lightsMap },
           uSun: { value: SUN },
-          uNight: { value: new Color("#040a13") },
-          uDay: { value: new Color("#0f233a") },
+          uNightTint: { value: new Color("#38598a") },
           uRim: { value: new Color("#3b67a6") },
           uWarm: { value: new Color("#f1b56e") },
+          uCity: { value: new Color("#ffc46e") },
         },
       }),
     ),
   );
 
-  spin.add(landPoints(pixelRatio, time));
   spin.add(hubPoints(pixelRatio, time));
   ROUTES.forEach(([from, to], i) =>
     spin.add(arcMesh(HUBS[from], HUBS[to], i / ROUTES.length, time)),
@@ -217,6 +242,7 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
   const timer = new Timer();
   let firstFrame = true;
   const render = () => {
+    if (pending > 0) return;
     renderer.render(scene, camera);
     if (firstFrame) {
       firstFrame = false;
@@ -226,6 +252,8 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
 
   const tick = () => {
     timer.update();
+    // Frames without the maps draw nothing and must not count toward the speed check
+    if (pending > 0) return;
     const raw = timer.getDelta();
     if (frameBudgetBlown(raw)) return;
     const dt = Math.min(raw, 0.1);
@@ -295,49 +323,13 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
       document.removeEventListener("visibilitychange", syncLoop);
       window.removeEventListener("pointermove", onPointer);
       disposeScene(scene);
+      dayMap.dispose();
+      lightsMap.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
     },
   };
-}
-
-function landPoints(pixelRatio: number, time: { value: number }) {
-  const positions: number[] = [];
-  const seeds: number[] = [];
-  for (let i = 0; i < LAND_SAMPLES; i++) {
-    if (!isLand(i)) continue;
-    const [x, y, z] = fibonacciPoint(i, LAND_SAMPLES);
-    positions.push(x * 1.002, y * 1.002, z * 1.002);
-    seeds.push(hash(i));
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new BufferAttribute(new Float32Array(positions), 3));
-  geometry.setAttribute("aSeed", new BufferAttribute(new Float32Array(seeds), 1));
-  return new Points(
-    geometry,
-    new ShaderMaterial({
-      vertexShader: glsl.landDots.vertex,
-      fragmentShader: glsl.landDots.fragment,
-      uniforms: {
-        uSize: { value: 2.1 },
-        uPixelRatio: { value: pixelRatio },
-        uTime: time,
-        uSun: { value: SUN },
-        uColor: { value: new Color("#8a7a68") },
-        uCity: { value: new Color("#f7c77f") },
-      },
-      blending: AdditiveBlending,
-      transparent: true,
-      depthWrite: false,
-    }),
-  );
-}
-
-/** Deterministic 0..1 noise per index: the same twinkle pattern on every load. */
-function hash(i: number) {
-  const x = Math.sin(i * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
 }
 
 function hubPoints(pixelRatio: number, time: { value: number }) {
