@@ -21,32 +21,40 @@ import { MUSD_DECIMALS } from "@/lib/format";
 export const PERIOD_UNITS = { minutes: 60, hours: 3_600, days: 86_400 } as const;
 export type PeriodUnit = keyof typeof PERIOD_UNITS;
 
-/** The five deadlines of ARCHITECTURE §3, each relative to the previous milestone. */
+/**
+ * The five deadlines of ARCHITECTURE §3, each relative to the previous milestone. `until` names
+ * the milestone the period ends with, for the timeline view.
+ */
 export const PERIODS = [
   {
     key: "production",
     label: "Production",
-    hint: "From advance paid until the inspector signs that goods are ready.",
+    until: "Goods ready and inspected",
+    hint: "The inspector signs that goods are ready. If not, you can claim the bond.",
   },
   {
     key: "balanceWindow",
-    label: "Balance window",
-    hint: "From inspection until you must fund the balance.",
+    label: "Your time to pay the balance",
+    until: "Balance funded into escrow",
+    hint: "If you miss it, the supplier keeps the advance.",
   },
   {
     key: "shipping",
     label: "Shipping",
-    hint: "From balance funded until the carrier signs that goods shipped.",
+    until: "Goods shipped",
+    hint: "The carrier signs that goods left. If not, you can claim a refund.",
   },
   {
     key: "challenge",
-    label: "Challenge window",
-    hint: "After shipment, time you have to open a dispute before release.",
+    label: "Your time to object",
+    until: "Balance released to the supplier",
+    hint: "Open a dispute before this ends, or the balance is released.",
   },
   {
     key: "arbitration",
-    label: "Arbitration",
-    hint: "Time the arbiter has to decide a dispute.",
+    label: "Arbiter's time to decide",
+    until: "Dispute decided",
+    hint: "Only used if there is a dispute.",
   },
 ] as const;
 export type PeriodKey = (typeof PERIODS)[number]["key"];
@@ -56,7 +64,8 @@ const AMOUNT = /^\d+(\.\d{1,18})?$/;
 const address = z
   .string()
   .trim()
-  .refine((v) => isAddress(v, { strict: false }), "Enter a 0x address (42 characters).")
+  // strict: all-lowercase passes, mixed case must carry a valid checksum (catches typos)
+  .refine((v) => isAddress(v), "Not a valid address. Check for a typo.")
   .refine((v) => v.toLowerCase() !== zeroAddress, "The zero address cannot hold a role.");
 
 const amount = z
@@ -78,6 +87,46 @@ const period = z.object({
 export const periodSeconds = (p: { value: string; unit: PeriodUnit }) =>
   Number(p.value) * PERIOD_UNITS[p.unit];
 
+type Periods = Record<PeriodKey, { value: string; unit: PeriodUnit }>;
+const p = (value: number, unit: PeriodUnit) => ({ value: String(value), unit });
+
+/** Timeline presets. Fast demo matches the seeded happy-path deal (packages/scripts seed). */
+export const TIMELINES = {
+  standard: {
+    label: "Standard",
+    description: "Typical for a factory order",
+    periods: {
+      production: p(30, "days"),
+      balanceWindow: p(7, "days"),
+      shipping: p(14, "days"),
+      challenge: p(3, "days"),
+      arbitration: p(14, "days"),
+    },
+  },
+  demo: {
+    label: "Fast demo",
+    description: "Minutes, for trying it on testnet",
+    periods: {
+      production: p(10, "minutes"),
+      balanceWindow: p(10, "minutes"),
+      shipping: p(10, "minutes"),
+      challenge: p(1, "minutes"),
+      arbitration: p(10, "minutes"),
+    },
+  },
+} satisfies Record<string, { label: string; description: string; periods: Periods }>;
+export type TimelinePreset = keyof typeof TIMELINES | "custom";
+
+/** Splits the order: the advance is `advancePct` % rounded down, the balance is the rest. */
+export function splitOrder(total: bigint, advancePct: number) {
+  const advance = (total * BigInt(advancePct)) / 100n;
+  return { advance, balance: total - advance };
+}
+
+/** Parses a typed MUSD amount, or undefined while it is not a valid amount. */
+export const parseMusd = (v: string) =>
+  AMOUNT.test(v.trim()) ? parseUnits(v.trim(), MUSD_DECIMALS) : undefined;
+
 /**
  * The create-deal form, checked the way `_validateTerms` checks it on-chain (ADR-017) so the
  * wallet only opens for terms the escrow will accept. `buyer` is the connected wallet.
@@ -89,8 +138,9 @@ export function dealFormSchema(buyer: Address | undefined) {
       inspector: address,
       carrier: address,
       arbiter: address,
-      advance: amount,
-      balance: amount,
+      total: amount,
+      advancePct: z.number().int().min(1, "At least 1%.").max(99, "At most 99%."),
+      timeline: z.enum(["standard", "demo", "custom"]),
       bondEnabled: z.boolean(),
       bonder: z.string().trim(),
       bondRatioPct: z.string().trim(),
@@ -121,6 +171,17 @@ export function dealFormSchema(buyer: Address | undefined) {
           path: ["arbiter"],
           message: "The supplier cannot be the arbiter.",
         });
+
+      const total = parseMusd(v.total);
+      if (total && v.advancePct >= 1 && v.advancePct <= 99) {
+        const { advance, balance } = splitOrder(total, v.advancePct);
+        if (advance === 0n || balance === 0n)
+          ctx.addIssue({
+            code: "custom",
+            path: ["total"],
+            message: "Too small to split into an advance and a balance.",
+          });
+      }
 
       for (const { key } of PERIODS) {
         const seconds = periodSeconds(v.periods[key]);
@@ -156,24 +217,19 @@ export function dealFormSchema(buyer: Address | undefined) {
 export type DealFormInput = z.input<ReturnType<typeof dealFormSchema>>;
 export type DealFormValues = z.output<ReturnType<typeof dealFormSchema>>;
 
-/** Starting values: short demo-friendly periods would surprise a real buyer, so days. */
+/** Starting values: 30% upfront, a 150% bond, the standard timeline. */
 export const DEFAULT_VALUES: DealFormInput = {
   supplier: "",
   inspector: "",
   carrier: "",
   arbiter: "",
-  advance: "",
-  balance: "",
+  total: "",
+  advancePct: 30,
+  timeline: "standard",
   bondEnabled: true,
   bonder: "",
   bondRatioPct: "150", // as in the demo script
-  periods: {
-    production: { value: "30", unit: "days" },
-    balanceWindow: { value: "7", unit: "days" },
-    shipping: { value: "14", unit: "days" },
-    challenge: { value: "3", unit: "days" },
-    arbitration: { value: "14", unit: "days" },
-  },
+  periods: TIMELINES.standard.periods,
   termsHash: "",
   termsFileName: "",
 };
@@ -184,6 +240,7 @@ export function toDealTerms(
   ctx: { buyer: Address; token: Address; feeBps: number },
 ): DealTerms {
   const seconds = (key: PeriodKey) => periodSeconds(v.periods[key]);
+  const { advance, balance } = splitOrder(parseUnits(v.total, MUSD_DECIMALS), v.advancePct);
   return {
     buyer: ctx.buyer,
     supplier: v.supplier,
@@ -192,8 +249,8 @@ export function toDealTerms(
     arbiter: v.arbiter,
     bonder: v.bondEnabled ? (v.bonder as Address) : zeroAddress,
     token: ctx.token,
-    advanceAmount: parseUnits(v.advance, MUSD_DECIMALS),
-    balanceAmount: parseUnits(v.balance, MUSD_DECIMALS),
+    advanceAmount: advance,
+    balanceAmount: balance,
     feeBps: ctx.feeBps,
     bondRatioBps: v.bondEnabled ? Number(v.bondRatioPct) * 100 : 0,
     productionPeriod: seconds("production"),
