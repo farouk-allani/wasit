@@ -137,7 +137,7 @@ WalletConnect wallets (optional).
 | `packages/sdk/` | ABIs, deployed addresses and EIP-712 helpers generated from the contracts |
 | `packages/scripts/` | Testnet seed scripts for the demo deals |
 | `deployments/` | Deployed addresses per network |
-| `docs/` | Security review, demo checklist |
+| `docs/` | Security review, demo checklist, deck outline |
 
 ## Roadmap
 
