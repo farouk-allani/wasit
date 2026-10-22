@@ -49,3 +49,32 @@ jobs:
       - name: Test
         working-directory: contracts
         run: forge test -vvv
+
+  web:
+    name: Web and packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The contracts package runs forge, which the job above covers
+      - name: Lint
+        run: pnpm --filter "./apps/*" --filter "./packages/*" lint
+
+      - name: Typecheck
+        run: pnpm --filter "./apps/*" --filter "./packages/*" typecheck
+
+      - name: Test
+        run: pnpm --filter "./apps/*" --filter "./packages/*" --if-present test
+
+      - name: Build
+        run: pnpm --filter @wasit/web build
