@@ -6,15 +6,10 @@ import {
   BufferGeometry,
   CatmullRomCurve3,
   Color,
-  DirectionalLight,
   DoubleSide,
   Group,
   Mesh,
-  MeshBasicMaterial,
-  MeshPhysicalMaterial,
   PerspectiveCamera,
-  PlaneGeometry,
-  PMREMGenerator,
   Points,
   Scene,
   ShaderMaterial,
@@ -58,18 +53,23 @@ const ROUTES: [Hub, Hub][] = [
 ];
 
 // One wide champagne band across the front of the globe, as in Farouk's landing mockup
-const RIBBONS: (RibbonShape & { color: string; tilt: [number, number, number]; spin: number })[] = [
+const RIBBONS: (RibbonShape & { tilt: [number, number, number]; spin: number })[] = [
   {
-    radius: 1.14,
-    width: 0.3,
-    twist: 0.34,
+    radius: 1.15,
+    width: 0.24,
+    twist: 0.2,
     twistWaves: 1,
-    swell: 0.18,
+    swell: 0.08,
     phase: 0.4,
-    color: "#e4bb80",
     tilt: [0.16, 0, 0.36],
     spin: 0.06,
   },
+];
+
+// Faint orbits of light around the band, tilted apart from it: [radius, tilt, spark offset]
+const ORBITS: [number, [number, number, number], number][] = [
+  [1.27, [-0.95, 0, 0.5], 0],
+  [1.33, [1.05, 0, -0.35], 0.5],
 ];
 
 // Centre of the view: lat 18°N, lon 28°E puts North Africa, Türkiye and the Gulf in front
@@ -109,16 +109,6 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
   const scene = new Scene();
   const camera = new PerspectiveCamera(30, 1, 0.1, 50);
   camera.position.set(0, 0, CAMERA_Z);
-
-  const pmrem = new PMREMGenerator(renderer);
-  const sky = duskSky();
-  const environment = pmrem.fromScene(sky, 0, 0.1, 100).texture;
-  disposeScene(sky);
-  scene.environment = environment;
-
-  const keyLight = new DirectionalLight("#ffd7a3", 2.4);
-  keyLight.position.copy(SUN).multiplyScalar(6);
-  scene.add(keyLight);
 
   const time = { value: 0 };
 
@@ -179,16 +169,17 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
     holder.rotation.set(...shape.tilt);
     const band = new Mesh(
       ribbonGeometry(shape),
-      new MeshPhysicalMaterial({
-        color: shape.color,
-        metalness: 1,
-        roughness: 0.22,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.2,
-        envMapIntensity: 1.25,
-        // A touch of self-glow keeps the band gold where it faces away from the sunset
-        emissive: "#6b4519",
-        emissiveIntensity: 0.35,
+      new ShaderMaterial({
+        vertexShader: glsl.ribbon.vertex,
+        fragmentShader: glsl.ribbon.fragment,
+        uniforms: {
+          uTime: time,
+          uSun: { value: SUN },
+          uGold: { value: new Color("#f2c27a") },
+          uFloor: { value: new Color("#1a1208") },
+          uPale: { value: new Color("#fff1d6") },
+          uSunColor: { value: new Color("#ffcf96") },
+        },
         side: DoubleSide,
       }),
     );
@@ -196,6 +187,8 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
     tilt.add(holder);
     return { band, speed: shape.spin };
   });
+  for (const [radius, rotation, offset] of ORBITS)
+    tilt.add(orbitMesh(radius, rotation, offset, time));
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = container;
@@ -302,8 +295,6 @@ export function createGlobe(container: HTMLElement, options: GlobeOptions): Glob
       document.removeEventListener("visibilitychange", syncLoop);
       window.removeEventListener("pointermove", onPointer);
       disposeScene(scene);
-      environment.dispose();
-      pmrem.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
@@ -433,42 +424,33 @@ function disposeScene(scene: Scene) {
   });
 }
 
-/** Scene for the ribbons' reflections: navy sky, warm sunset toward the key light. */
-function duskSky() {
-  const sky = new Scene();
-  sky.add(
-    new Mesh(
-      new SphereGeometry(10, 48, 24),
-      new ShaderMaterial({
-        vertexShader: glsl.envSky.vertex,
-        fragmentShader: glsl.envSky.fragment,
-        uniforms: {
-          uSun: { value: SUN },
-          uTop: { value: new Color("#1b3558") },
-          uHorizon: { value: new Color("#c48a5a") },
-          uGround: { value: new Color("#070f19") },
-          uSunColor: { value: new Color("#ffc88a") },
-        },
-        side: BackSide,
-      }),
-    ),
-  );
-  // Soft boxes give the metal its highlights: warm sunset key, white top, cool fill, warm front
-  const boxes: [Color, [number, number, number], number, number][] = [
-    [new Color(6, 4.2, 2.6), [7, 2.5, 4.5], 5, 2.2],
-    [new Color(2.6, 2.6, 2.7), [-1.5, 8, 2.5], 7, 1.6],
-    [new Color(0.7, 0.85, 1.2), [-8, 0.5, 2], 4, 5],
-    // Warm fill behind the camera: the front of the band reflects gold, not the navy sky
-    [new Color(3.4, 2.4, 1.4), [1, 1.5, 8], 8, 4],
-  ];
-  for (const [color, position, w, h] of boxes) {
-    const box = new Mesh(
-      new PlaneGeometry(w, h),
-      new MeshBasicMaterial({ color, side: DoubleSide }),
-    );
-    box.position.set(...position);
-    box.lookAt(0, 0, 0);
-    sky.add(box);
+/** A thin closed ring of light at `radius`, rotated by `rotation`. */
+function orbitMesh(
+  radius: number,
+  rotation: [number, number, number],
+  offset: number,
+  time: { value: number },
+) {
+  const points: Vector3[] = [];
+  for (let i = 0; i < 128; i++) {
+    const t = (i / 128) * Math.PI * 2;
+    points.push(new Vector3(Math.cos(t) * radius, 0, Math.sin(t) * radius));
   }
-  return sky;
+  const mesh = new Mesh(
+    new TubeGeometry(new CatmullRomCurve3(points, true), 256, 0.0035, 6, true),
+    new ShaderMaterial({
+      vertexShader: glsl.orbit.vertex,
+      fragmentShader: glsl.orbit.fragment,
+      uniforms: {
+        uTime: time,
+        uOffset: { value: offset },
+        uColor: { value: new Color("#ffd8a0") },
+      },
+      blending: AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+    }),
+  );
+  mesh.rotation.set(...rotation);
+  return mesh;
 }
