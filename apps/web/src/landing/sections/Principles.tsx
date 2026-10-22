@@ -1,10 +1,12 @@
 import { ExternalLink } from "lucide-react";
 import { REPO_URL } from "@/lib/links";
+import { Icon3D, type Icon3DName } from "../icons/Icon3D";
 import { Reveal } from "../Reveal";
 
-const COLUMNS: { title: string; items: string[] }[] = [
+const COLUMNS: { title: string; icon: Icon3DName; items: string[] }[] = [
   {
     title: "Enforced by the contracts",
+    icon: "shield",
     items: [
       "Nobody, including Wasit's owner, can move deal funds or bond collateral.",
       "Release, refunds, default claims and dispute rulings can never be paused.",
@@ -14,6 +16,7 @@ const COLUMNS: { title: string; items: string[] }[] = [
   },
   {
     title: "Honest limits",
+    icon: "alert",
     items: [
       "The bond secures only the advance, and only up to what it is worth.",
       "Attestations are signed statements by named parties, not proof of truth. The challenge window and the arbiter exist for that reason.",
@@ -45,7 +48,8 @@ export function Principles() {
         <div className="mt-14 grid gap-10 md:grid-cols-2 md:gap-8">
           {COLUMNS.map((column, i) => (
             <Reveal key={column.title} delay={i * 100} className="space-y-5">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-4">
+              <div className="flex items-center gap-4 border-b border-border pb-4">
+                <Icon3D name={column.icon} className="size-14" />
                 <h3 className="text-lg font-semibold">{column.title}</h3>
               </div>
               <ul className="space-y-4">

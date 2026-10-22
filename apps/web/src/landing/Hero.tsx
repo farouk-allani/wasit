@@ -1,4 +1,4 @@
-import { ArrowRight, Bitcoin, Landmark, LockKeyhole } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { lazy, Suspense, useCallback, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import portDusk1280 from "./assets/port-dusk-1280.webp";
 import portDuskGlobe1280 from "./assets/port-dusk-globe-1280.webp";
 import portDuskGlobe from "./assets/port-dusk-globe.webp";
 import portDusk from "./assets/port-dusk.webp";
+import { Icon3D } from "./icons/Icon3D";
 import { supportsWebGL } from "./webgl";
 
 const GlobeCanvas = lazy(() => import("./globe/GlobeCanvas"));
@@ -75,7 +76,7 @@ export function Hero() {
           )}
           <FlowCard
             className="start-0 top-[8%]"
-            icon={<Landmark />}
+            icon={<Icon3D name="dollar-coin" />}
             title="Buyer"
             delay="delay-700"
           >
@@ -83,7 +84,7 @@ export function Hero() {
           </FlowCard>
           <FlowCard
             className="-end-2 top-[34%] xl:-end-6"
-            icon={<Bitcoin />}
+            icon={<Icon3D name="btc-coin" />}
             title="Supplier or agent"
             delay="delay-1000"
           >
@@ -91,7 +92,7 @@ export function Hero() {
           </FlowCard>
           <FlowCard
             className="start-[10%] bottom-[9%]"
-            icon={<LockKeyhole />}
+            icon={<Icon3D name="padlock" />}
             title="Wasit escrow"
             delay="delay-[1300ms]"
           >
@@ -134,14 +135,12 @@ function FlowCard({
   return (
     <div
       className={cn(
-        "absolute z-10 hidden w-60 animate-in items-start gap-3 rounded-xl border border-white/12 bg-navy-900/55 p-4 shadow-[0_20px_40px_-20px_rgb(0_0_0/0.8)] backdrop-blur-md duration-1000 fill-mode-backwards fade-in slide-in-from-bottom-3 lg:flex",
+        "absolute z-10 hidden w-64 animate-in items-center gap-3 rounded-xl border border-white/12 bg-navy-900/55 p-4 shadow-[0_20px_40px_-20px_rgb(0_0_0/0.8)] backdrop-blur-md duration-1000 fill-mode-backwards fade-in slide-in-from-bottom-3 lg:flex",
         delay,
         className,
       )}
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gold/15 text-gold [&_svg]:size-[1.1rem]">
-        {icon}
-      </span>
+      {icon}
       <span className="space-y-1">
         <span className="block text-sm font-semibold">{title}</span>
         <span className="block text-[0.8rem] leading-snug text-foreground/70">{children}</span>
