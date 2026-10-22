@@ -71,8 +71,8 @@
   --destructive: #b5432f;
   --success: #23805d;
   --warning: #9a6514;
-  --border: rgb(17 26 38 / 0.1);
-  --input: rgb(17 26 38 / 0.18);
+  --border: rgb(17 26 38 / 0.12);
+  --input: rgb(17 26 38 / 0.28);
   --ring: var(--gold-600);
   --gold: var(--gold-600);
   background-color: var(--background);
