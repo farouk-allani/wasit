@@ -143,11 +143,11 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
-  /* Mona Sans is variable in width: headings run semi-expanded, echoing the wide wordmark */
+  /* Headings at normal width, as in Farouk's landing mockup; only the wordmark runs wide */
   h1,
   h2,
   h3 {
-    font-stretch: 112.5%;
+    font-stretch: 100%;
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
@@ -158,7 +158,7 @@
 }
 
 @utility eyebrow {
-  @apply text-xs font-semibold tracking-[0.2em] text-gold uppercase font-stretch-expanded;
+  @apply text-xs font-medium tracking-[0.28em] text-gold uppercase;
 }
 
 /* Mona Sans draws a slashed zero in its tabular figures, so amounts keep the default figures */
