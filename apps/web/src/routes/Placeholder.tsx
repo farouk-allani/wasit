@@ -1,12 +1,15 @@
 import { useParams } from "react-router";
 
-/** Stands in for a page whose UI waits for the design (PLAN 4.2–4.7). */
+/** Stands in for a page whose UI comes in a later step (PLAN 4.4–4.7). */
 export function Placeholder({ title }: { title: string }) {
   const { id } = useParams();
   return (
-    <h1>
-      {title}
-      {id !== undefined && ` #${id}`}
-    </h1>
+    <div className="space-y-3">
+      <p className="eyebrow">Coming in this phase</p>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        {title}
+        {id !== undefined && <span className="text-muted-foreground"> #{id}</span>}
+      </h1>
+    </div>
   );
 }

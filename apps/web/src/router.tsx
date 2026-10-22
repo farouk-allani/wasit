@@ -1,13 +1,16 @@
 import { createBrowserRouter } from "react-router";
+import { AppLayout, MarketingLayout } from "./routes/layouts";
 import { Placeholder } from "./routes/Placeholder";
-import { Shell } from "./routes/Shell";
 
 // Routes from ARCHITECTURE §10. A static host must serve index.html for every path (PLAN 4.9).
 export const router = createBrowserRouter([
   {
-    element: <Shell />,
+    element: <MarketingLayout />,
+    children: [{ path: "/", element: <Placeholder title="Wasit" /> }],
+  },
+  {
+    element: <AppLayout />,
     children: [
-      { path: "/", element: <Placeholder title="Wasit" /> },
       { path: "/deals", element: <Placeholder title="My deals" /> },
       { path: "/deals/new", element: <Placeholder title="New deal" /> },
       { path: "/deals/:id", element: <Placeholder title="Deal" /> },
