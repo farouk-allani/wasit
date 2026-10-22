@@ -11,5 +11,5 @@
     // checks with our options (skipLibCheck covers .d.ts only) and which uses non-type-only imports
     "verbatimModuleSyntax": false
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "scripts", "vite.config.ts", "vitest.config.ts"]
 }
