@@ -310,7 +310,7 @@ export function DealPage() {
             </p>
           )}
         </div>
-        <aside className="space-y-6 lg:sticky lg:top-24">
+        <aside className="order-first space-y-6 lg:sticky lg:top-24 lg:order-none">
           <DealActions
             dealId={id}
             deal={deal}
