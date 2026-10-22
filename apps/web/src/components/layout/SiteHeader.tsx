@@ -33,15 +33,20 @@ export function SiteHeader({
     <header
       className={cn(
         "sticky top-0 z-40 transition-[background-color,border-color,backdrop-filter] duration-300",
-        variant === "marketing" && "-mb-[4.5rem]",
+        variant === "marketing" && "-mb-20",
         solid
           ? "border-b border-border bg-navy-900/80 backdrop-blur-xl"
           : "border-b border-transparent",
       )}
     >
-      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
+      <div
+        className={cn(
+          "mx-auto flex max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8",
+          variant === "marketing" ? "h-20" : "h-[4.5rem]",
+        )}
+      >
         <Link to="/" aria-label="Wasit home" className="rounded-md">
-          <BrandLockup />
+          <BrandLockup size={variant === "marketing" ? "lg" : "md"} />
         </Link>
         <nav aria-label="Main" className="hidden flex-1 items-center gap-1 md:flex">
           {variant === "marketing"

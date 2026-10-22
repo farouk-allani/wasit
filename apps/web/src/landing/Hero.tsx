@@ -53,17 +53,17 @@ export function Hero() {
         sizes="100vw"
         alt=""
         fetchPriority="high"
-        className="absolute inset-0 -z-20 size-full object-cover object-[70%_center]"
+        className="absolute inset-0 -z-20 size-full object-cover object-center"
       />
-      <div className="absolute inset-0 -z-10 bg-linear-to-t from-navy-950 via-navy-950/85 to-navy-950/10 lg:bg-linear-to-r lg:from-navy-950 lg:via-navy-950/75 lg:to-navy-950/10 lg:rtl:bg-linear-to-l" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-linear-to-t from-navy-950 to-transparent" />
+      <div className="absolute inset-0 -z-10 bg-linear-to-t from-navy-950 via-navy-950/85 to-navy-950/10 lg:bg-linear-to-r lg:from-navy-950/95 lg:via-navy-950/55 lg:to-transparent lg:rtl:bg-linear-to-l" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-linear-to-t from-navy-950/90 to-transparent" />
 
       <div className="mx-auto grid min-h-[min(86svh,48rem)] max-w-7xl items-center gap-6 px-4 pt-28 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:px-8 lg:pt-20 lg:pb-6">
         <div className="relative z-10 max-w-[40rem] space-y-7">
           <p className="eyebrow">Protected advance payments · Built on Mezo</p>
           <h1
             id="hero-title"
-            className="text-[2.6rem] leading-[1.04] font-semibold tracking-[-0.025em] text-balance sm:text-6xl sm:text-wrap"
+            className="text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.02em] text-balance sm:text-[3.5rem] sm:text-wrap xl:text-[3.7rem]"
           >
             Trade across borders <br className="hidden sm:block" />
             with <span className="text-gold">confidence.</span>
@@ -93,40 +93,45 @@ export function Hero() {
             </Suspense>
           )}
           <FlowCard
-            className="start-0 top-[16%]"
-            icon={<Icon3D name="dollar-banknote" />}
+            className="-start-[6%] top-[14%]"
+            icon={<Icon3D name="dollar-banknote" className="size-8" />}
             title="Buyer"
             delay="delay-700"
             status="Advance paid"
           >
-            Pays the 30% advance in MUSD, straight to the supplier
+            Pays 30% in MUSD
           </FlowCard>
           <FlowCard
-            className="-end-2 top-[4%] xl:-end-6"
-            icon={<Icon3D name="coin" />}
-            title="Supplier or agent"
+            className="-end-[10%] top-[18%]"
+            icon={<Icon3D name="coin" className="size-8" />}
+            title="Supplier"
             delay="delay-1000"
             status="Bond posted"
           >
-            Posts a BTC bond that backs the advance
+            Locks a BTC bond
           </FlowCard>
           <FlowCard
-            className="end-[4%] bottom-[10%]"
-            icon={<Icon3D name="locked" />}
+            className="end-[8%] top-[54%]"
+            icon={
+              <span className="grid size-10 place-items-center rounded-lg bg-gold-400/15">
+                <Icon3D name="locked" className="size-7" />
+              </span>
+            }
             title="Wasit escrow"
             delay="delay-[1300ms]"
-            status="Awaiting attestations"
           >
-            Holds the 70% balance until signed release
+            Holds the 70% until signed release
           </FlowCard>
         </div>
       </div>
 
       <div className="border-t border-white/10 bg-navy-950/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-7 gap-y-5 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <p className="eyebrow text-[0.65rem] text-steel-300">Built on</p>
-            <span className="text-xl font-bold tracking-[0.08em] font-stretch-expanded">MEZO</span>
+          <div className="space-y-1">
+            <p className="eyebrow text-[0.6rem] text-steel-300">Built on</p>
+            <span className="block text-2xl leading-none font-bold tracking-[0.06em] font-stretch-expanded">
+              MEZO
+            </span>
           </div>
           <StackGroup label="Settles in" items={SETTLES} />
           <StackGroup label="Integrates with" items={INTEGRATES} />
@@ -149,28 +154,30 @@ function FlowCard({
   icon: ReactNode;
   title: string;
   delay: string;
-  status: string;
+  status?: string;
   children: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "absolute z-10 hidden w-64 animate-in items-center gap-3 rounded-xl border border-white/12 bg-navy-900/55 p-4 shadow-[0_20px_40px_-20px_rgb(0_0_0/0.8)] backdrop-blur-md duration-1000 fill-mode-backwards fade-in slide-in-from-bottom-3 lg:flex",
+        "absolute z-10 hidden max-w-56 animate-in items-center gap-3 rounded-xl border border-white/12 bg-navy-900/60 px-3.5 py-3 shadow-[0_20px_40px_-20px_rgb(0_0_0/0.8)] backdrop-blur-md duration-1000 fill-mode-backwards fade-in slide-in-from-bottom-3 lg:flex",
         delay,
         className,
       )}
     >
       {icon}
-      <span className="space-y-1">
+      <span className="space-y-0.5">
         <span className="block text-sm font-semibold">{title}</span>
-        <span className="block text-[0.8rem] leading-snug text-foreground/70">{children}</span>
-        <span className="flex items-center gap-1.5 pt-0.5 text-xs font-medium text-success">
-          <span
-            aria-hidden
-            className="size-1.5 rounded-full bg-success shadow-[0_0_8px_var(--success)]"
-          />
-          {status}
-        </span>
+        <span className="block text-xs leading-snug text-foreground/70">{children}</span>
+        {status && (
+          <span className="flex items-center gap-1.5 pt-0.5 text-xs text-foreground/85">
+            <span
+              aria-hidden
+              className="size-1.5 rounded-full bg-success shadow-[0_0_8px_var(--success)]"
+            />
+            {status}
+          </span>
+        )}
       </span>
     </div>
   );
