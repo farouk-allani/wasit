@@ -161,9 +161,9 @@
   @apply text-xs font-semibold tracking-[0.2em] text-gold uppercase font-stretch-expanded;
 }
 
+/* Mona Sans draws a slashed zero in its tabular figures, so amounts keep the default figures */
 @utility amount {
-  @apply font-sans tabular-nums;
-  font-feature-settings: "tnum";
+  @apply font-sans;
 }
 
 @media (prefers-reduced-motion: reduce) {
