@@ -183,29 +183,93 @@ export const hub = {
   `,
 };
 
-/** Dusk sky used only to light the metal ribbons (a PMREM environment), never drawn. */
-export const envSky = {
+/**
+ * Polished gold band. Reflects an analytic studio (navy floor, warm horizon, pale overhead
+ * softbox, the sunset) instead of a baked environment, so it reads as metal on every GPU.
+ * Bright rolled edges and an engraved line follow the band; a glint travels along it.
+ */
+export const ribbon = {
   vertex: /* glsl */ `
-    varying vec3 vDir;
+    varying vec3 vNormalW;
+    varying vec3 vPosW;
+    varying vec2 vUv;
     void main() {
-      vDir = normalize(position);
+      vec4 world = modelMatrix * vec4(position, 1.0);
+      vPosW = world.xyz;
+      vNormalW = normalize(mat3(modelMatrix) * normal);
+      vUv = uv;
+      gl_Position = projectionMatrix * viewMatrix * world;
+    }
+  `,
+  fragment: /* glsl */ `
+    uniform float uTime;
+    uniform vec3 uSun;
+    uniform vec3 uGold;
+    uniform vec3 uFloor;
+    uniform vec3 uPale;
+    uniform vec3 uSunColor;
+    varying vec3 vNormalW;
+    varying vec3 vPosW;
+    varying vec2 vUv;
+
+    vec3 studio(vec3 r) {
+      vec3 c = mix(uFloor, vec3(0.5), smoothstep(-0.7, 0.1, r.y));
+      c = mix(c, vec3(0.95), smoothstep(0.25, 0.8, r.y));
+      // Broad fill from the viewer's side, so the stretch facing the camera stays bright
+      c += vec3(0.85) * smoothstep(-0.1, 0.9, r.z);
+      c += vec3(0.7) * smoothstep(0.75, 0.95, dot(r, normalize(vec3(-0.55, 0.3, 0.78))));
+      c += uSunColor * (pow(max(dot(r, uSun), 0.0), 18.0) * 2.5 + pow(max(dot(r, uSun), 0.0), 3.0) * 0.4);
+      return c;
+    }
+
+    void main() {
+      // The band's geometry normals point at the globe; shade with the side facing the viewer
+      vec3 v = normalize(cameraPosition - vPosW);
+      vec3 outward = -normalize(vNormalW);
+      float facing = dot(outward, v);
+      vec3 n = facing >= 0.0 ? outward : -outward;
+      float fresnel = pow(1.0 - max(dot(n, v), 0.0), 5.0);
+      vec3 tint = mix(uGold, uPale, fresnel);
+      vec3 color = studio(reflect(-v, n)) * tint;
+
+      // Rolled edges catch the light; an engraved line runs just inside each edge
+      float edge = min(vUv.y, 1.0 - vUv.y);
+      color += uGold * (1.0 - smoothstep(0.0, 0.05, edge)) * 0.8;
+      color *= 1.0 - 0.45 * (1.0 - smoothstep(0.0, 0.012, abs(edge - 0.13)));
+
+      float glint = fract(vUv.x - uTime * 0.035) - 0.5;
+      color += uGold * exp(-glint * glint * 900.0) * 0.9;
+
+      // The inner face sits in the globe's shadow
+      if (facing < 0.0) color *= 0.45;
+      gl_FragColor = vec4(color, 1.0);
+      ${OUTPUT}
+    }
+  `,
+};
+
+/** Thin orbit of light around the globe, with a few sparks running along it. */
+export const orbit = {
+  vertex: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragment: /* glsl */ `
-    uniform vec3 uSun;
-    uniform vec3 uTop;
-    uniform vec3 uHorizon;
-    uniform vec3 uGround;
-    uniform vec3 uSunColor;
-    varying vec3 vDir;
+    uniform float uTime;
+    uniform float uOffset;
+    uniform vec3 uColor;
+    varying vec2 vUv;
     void main() {
-      vec3 d = normalize(vDir);
-      vec3 color = d.y > 0.0 ? mix(uHorizon, uTop, pow(d.y, 0.6)) : mix(uHorizon, uGround, pow(-d.y, 0.4));
-      color += uSunColor * pow(max(dot(d, uSun), 0.0), 12.0) * 6.0;
-      color += uSunColor * pow(max(dot(d, uSun), 0.0), 2.0) * 0.6;
-      color += vec3(1.0) * smoothstep(0.92, 0.97, dot(d, normalize(vec3(-0.6, 0.7, 0.4)))) * 1.5;
-      gl_FragColor = vec4(color, 1.0);
+      float spark = 0.0;
+      for (int i = 0; i < 3; i++) {
+        float d = fract(vUv.x * 2.0 - uTime * 0.05 + uOffset + float(i) * 0.37) - 0.5;
+        spark = max(spark, exp(-d * d * 400.0));
+      }
+      gl_FragColor = vec4(uColor, 0.07 + 0.93 * spark);
+      ${OUTPUT}
     }
   `,
 };
