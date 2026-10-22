@@ -3,6 +3,8 @@
  *   happy    live set: bond, advance, READY, balance, SHIPPED, challenge window, release
  *   default  live set: bond, advance, production deadline missed, buyer claims, bond refunds
  *   protect  demo-sim set (simulated price feed): bond, advance, price drop, protect()
+ *   dispute  live set: shipped, then the buyer disputes; left open for the arbiter (30 days)
+ *   fund     only the top-up below, so a demo can be recorded live from the role wallets
  * Usage (after `forge build` in contracts/): pnpm --filter @wasit/scripts seed [scenario|all]
  * Every scenario first tops up the role accounts from the deployer. Amounts are small on purpose;
  * the buyer's MUSD comes from a BTC → MUSD swap on the Mezo pool, never from borrowing.
@@ -36,7 +38,9 @@ const BALANCE = units("70");
 const BOND_RATIO_BPS = 15_000; // 150 % of the net advance, as in the demo script
 const GAS_RESERVE = units("0.0001"); // BTC per role; one tx costs ~1e-10 BTC on testnet
 const AGENT_BTC = units("0.0025"); // three bonds of ~0.00056 BTC, plus gas
-const BUYER_MUSD = units("170"); // 100 (happy) + 30 (default) + 30 (protect) + margin
+// 100 (happy) + 30 (default) + 30 (protect) + 100 (dispute), or one live recording of the
+// happy and default scenes after a seed run
+const BUYER_MUSD = units("270");
 const MINUTE = 60;
 const DAY = 86_400;
 const READY_INSPECTED = 1;
@@ -331,7 +335,42 @@ async function protect(ctx: Ctx) {
   return dealId;
 }
 
-const scenarios = ["happy", "default", "protect"] as const;
+/** The buyer's written reason. Only its hash goes on-chain; the arbiter checks this text against it. */
+const DISPUTE_REASON =
+  "Demo dispute: 200 of the 1,000 tiles arrived cracked. Inspection photos sent to the arbiter.";
+
+async function dispute(ctx: Ctx, live: Deployment) {
+  const { accounts: a, call } = ctx;
+  console.log("dispute (live set)");
+  const short = 10 * MINUTE;
+  const periods = {
+    production: short,
+    balanceWindow: short,
+    shipping: short,
+    challenge: 3 * DAY,
+    arbitration: 30 * DAY,
+  };
+  const { dealId, advanced } = await openDeal(ctx, live, "dispute", periods, true);
+  const deal = { address: live.escrow, abi: ESCROW, args: [dealId] } as const;
+  await attest(ctx, live, dealId, READY_INSPECTED, a.inspector, advanced, `inspection ${dealId}`);
+  const funded = await call("buyer funds the balance", a.buyer, {
+    ...deal,
+    functionName: "fundBalance",
+  });
+  await attest(ctx, live, dealId, SHIPPED, a.carrier, funded, `bill of lading ${dealId}`);
+  const reasonHash = keccak256(toBytes(DISPUTE_REASON));
+  await call("buyer disputes", a.buyer, {
+    address: live.escrow,
+    abi: ESCROW,
+    functionName: "dispute",
+    args: [dealId, reasonHash],
+  });
+  console.log(`  reason: ${DISPUTE_REASON}
+  reasonHash ${reasonHash}`);
+  return dealId;
+}
+
+const scenarios = ["happy", "default", "protect", "dispute", "fund"] as const;
 const chosen = process.argv[2] ?? "all";
 if (chosen !== "all" && !(scenarios as readonly string[]).includes(chosen)) {
   throw new Error(`unknown scenario ${chosen}; use one of ${scenarios.join(", ")} or all`);
@@ -350,4 +389,6 @@ if (chosen === "all" || chosen === "default") {
   deals.default = `${live.escrow} #${await supplierDefault(ctx, live)}`;
 }
 if (chosen === "all" || chosen === "protect") deals.protect = `demo-sim #${await protect(ctx)}`;
+if (chosen === "all" || chosen === "dispute")
+  deals.dispute = `${live.escrow} #${await dispute(ctx, live)}`;
 console.log(JSON.stringify({ deals, txs: ctx.sent }, null, 2));
