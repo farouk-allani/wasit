@@ -76,7 +76,7 @@ export function Hero() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <a href="#how-it-works">See how it works</a>
+              <a href="#deal-flow">See the deal flow</a>
             </Button>
           </div>
         </div>
