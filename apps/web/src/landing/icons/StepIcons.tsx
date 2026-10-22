@@ -108,3 +108,54 @@ export function SettleIcon({ className }: { className?: string }) {
     </Frame>
   );
 }
+
+/** A shield with a green check: what the contracts enforce on their own. */
+export function EnforcedIcon({ className }: { className?: string }) {
+  return (
+    <Frame className={className}>
+      <path
+        d="M44 6l22 8v22c0 14-10 24-22 30-12-6-22-16-22-30V14z"
+        fill={PAPER}
+        stroke={LINE}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <path d="M34 26h20M34 34h20M34 42h12" stroke={LINE} strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="66" cy="56" r="13" fill="#2fa36b" />
+      <Check x="58" y="48" width="16" height="16" color="#fff" strokeWidth={3} />
+    </Frame>
+  );
+}
+
+/** A gauge with an amber warning: where the protection stops. */
+export function LimitsIcon({ className }: { className?: string }) {
+  const amber = useId();
+  return (
+    <Frame className={className}>
+      <defs>
+        <linearGradient id={amber} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f8c45c" />
+          <stop offset="1" stopColor="#e08a2c" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M14 54a30 30 0 0 1 60 0z"
+        fill={PAPER}
+        stroke={LINE}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M21 54h4M25 37l3 3M44 24v4M63 37l-3 3"
+        stroke={LINE}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path d="M44 54l-13-15" stroke={LINE} strokeWidth="3" strokeLinecap="round" />
+      <circle cx="44" cy="54" r="3.5" fill={LINE} />
+      <circle cx="70" cy="56" r="13" fill={`url(#${amber})`} />
+      <path d="M70 49v8" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="70" cy="62.5" r="1.8" fill="#fff" />
+    </Frame>
+  );
+}
