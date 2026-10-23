@@ -5,7 +5,7 @@ done during the Mezo Buildathon, what they found, and what you still have to tru
 
 ## How the contracts were checked
 
-- **Tests:** 260 unit, fuzz and invariant tests. Fuzz tests run 10,000 cases each in CI. Two
+- **Tests:** 263 unit, fuzz and invariant tests. Fuzz tests run 10,000 cases each in CI. Two
   invariant suites run random call sequences against the escrow and against the escrow + bond
   together (moving BTC prices, pool slippage, oracle outages, protections, top-ups).
 - **Invariants checked after every random call:**
