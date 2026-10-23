@@ -69,46 +69,61 @@ then enforces them on-chain. Everyone involved is a wallet address named in the 
 ## How it works
 
 ```mermaid
+%%{init: {'sequence': {'actorMargin': 24, 'width': 112, 'boxMargin': 6}}}%%
 sequenceDiagram
     autonumber
     participant B as Buyer
-    participant E as WasitEscrow (MUSD)
+    participant E as Escrow
     participant S as Supplier
+    participant I as Signers
+    participant K as BTC bond
     participant A as Bond poster
-    participant K as AdvanceBond (BTC)
-    participant I as Inspector / Carrier
-    B->>E: createDeal: parties, amounts, deadlines, terms hash
-    S->>E: accept (the arbiter accepts the role too)
-    A->>K: post BTC, e.g. 150% of the net advance
-    B->>E: fund advance (one EIP-2612 permit signature)
-    E->>S: advance, straight away, for production
-    I-->>E: READY: signed statement, anyone can submit it
-    B->>E: fund balance, held in escrow
-    I-->>E: SHIPPED: signed statement, challenge window opens
-    E->>S: balance, after the window or when the buyer accepts
-    K->>A: BTC back to the bond poster
+    B->>E: create deal
+    S->>E: accept
+    A->>K: post BTC
+    B->>E: pay advance
+    E->>S: advance
+    I->>E: READY
+    B->>E: pay balance
+    I->>E: SHIPPED
+    Note over B,S: challenge window
+    E->>S: balance
+    K->>A: BTC back
 ```
+
+1. The buyer creates the deal: parties, amounts, deadlines and the hash of the terms document.
+2. The supplier accepts, and so does the arbiter (not drawn).
+3. The bond poster locks BTC worth the agreed share of the advance, e.g. 150%.
+4. The buyer pays the advance with one EIP-2612 permit signature and one transaction, and
+5. the escrow forwards it to the supplier at once, for production.
+6. The inspector signs READY (EIP-712, with the report's fingerprint). Anyone can submit the
+   signature, so the inspector needs no gas.
+7. The buyer pays the balance, which the escrow holds.
+8. The carrier signs SHIPPED, which opens the challenge window.
+9. When the window ends without a dispute, or the buyer accepts early, the balance goes to the supplier,
+10. and the bond returns the BTC to its poster.
 
 Every deal moves forward through these states, and never back:
 
 ```mermaid
 stateDiagram-v2
-    direction LR
     [*] --> Created
     Created --> Accepted: supplier accepts
-    Accepted --> AdvancePaid: buyer pays (arbiter in, bond posted)
+    Accepted --> AdvancePaid: buyer pays advance
     AdvancePaid --> GoodsReady: inspector signs
     GoodsReady --> BalanceFunded: buyer pays balance
     BalanceFunded --> Shipped: carrier signs
-    Shipped --> Released: window ends, or buyer accepts
-    Shipped --> Disputed: buyer disputes in the window
+    Shipped --> Released: window ends
+    Shipped --> Disputed: buyer disputes
     Disputed --> Resolved: arbiter rules
     Disputed --> Released: no ruling in time
-    AdvancePaid --> SupplierDefaulted: production deadline missed
-    BalanceFunded --> SupplierDefaulted: shipping deadline missed
-    GoodsReady --> BuyerDefaulted: balance not paid in time
-    Created --> Cancelled
-    Accepted --> Cancelled
+    AdvancePaid --> SupplierDefaulted: deadline missed
+    BalanceFunded --> SupplierDefaulted: deadline missed
+    GoodsReady --> BuyerDefaulted: balance late
+    Released --> [*]
+    Resolved --> [*]
+    SupplierDefaulted --> [*]
+    BuyerDefaulted --> [*]
 ```
 
 Before the advance, the buyer or the supplier can cancel. After it, the supplier can still return
