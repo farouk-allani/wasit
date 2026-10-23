@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createLogStore,
   fetchDealLogs,
+  LOG_CONCURRENCY,
   MAX_LOG_RANGE,
   RESCAN_BLOCKS,
   type LogReader,
@@ -16,7 +17,7 @@ const contracts = {
 
 /** Fake RPC: one escrow log in every block, records every range it is asked for. */
 function fakeClient(head: { value: bigint }) {
-  const ranges: { address: Address; fromBlock: bigint; toBlock: bigint }[] = [];
+  const ranges: { address: Address[]; fromBlock: bigint; toBlock: bigint }[] = [];
   const blocksRead: bigint[] = [];
   const client = {
     getBlockNumber: () => Promise.resolve(head.value),
@@ -24,9 +25,8 @@ function fakeClient(head: { value: bigint }) {
       blocksRead.push(blockNumber);
       return Promise.resolve({ timestamp: 1_792_000_000n + blockNumber });
     },
-    getContractEvents: ({ address, fromBlock, toBlock }: (typeof ranges)[number]) => {
+    getLogs: ({ address, fromBlock, toBlock }: (typeof ranges)[number]) => {
       ranges.push({ address, fromBlock, toBlock });
-      if (address !== contracts.escrow) return Promise.resolve([]);
       const logs = [];
       for (let b = fromBlock; b <= toBlock; b++) {
         logs.push({
@@ -44,18 +44,37 @@ function fakeClient(head: { value: bigint }) {
 }
 
 describe("fetchDealLogs", () => {
-  it("splits a long range into calls the RPC accepts, for escrow and bond", async () => {
+  it("splits a long range into calls the RPC accepts, one per range for escrow and bond", async () => {
     const { client, ranges } = fakeClient({ value: 0n });
     const logs = await fetchDealLogs(client, contracts, 1_000n, 25_000n);
-    const escrowRanges = ranges.filter((r) => r.address === contracts.escrow);
-    expect(escrowRanges.map((r) => [r.fromBlock, r.toBlock])).toEqual([
+    expect(ranges.map((r) => [r.fromBlock, r.toBlock])).toEqual([
       [1_000n, 10_999n],
       [11_000n, 20_999n],
       [21_000n, 25_000n],
     ]);
-    expect(escrowRanges.every((r) => r.toBlock - r.fromBlock < MAX_LOG_RANGE)).toBe(true);
-    expect(ranges.filter((r) => r.address === contracts.bond)).toHaveLength(3);
+    expect(ranges.every((r) => r.toBlock - r.fromBlock < MAX_LOG_RANGE)).toBe(true);
+    expect(
+      ranges.every((r) => r.address.join() === [contracts.escrow, contracts.bond].join()),
+    ).toBe(true);
     expect(logs).toHaveLength(24_001);
+  });
+
+  it(`reads up to ${LOG_CONCURRENCY} ranges at once and still returns every log`, async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const client = {
+      getLogs: async ({ fromBlock }: { fromBlock: bigint }) => {
+        peak = Math.max(peak, ++inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+        return [{ blockNumber: fromBlock }];
+      },
+    } as unknown as LogReader;
+    const logs = await fetchDealLogs(client, contracts, 0n, 20n * MAX_LOG_RANGE - 1n);
+    expect(peak).toBe(LOG_CONCURRENCY);
+    expect(logs.map((l) => l.blockNumber).sort((a, b) => Number(a - b))).toEqual(
+      Array.from({ length: 20 }, (_, i) => BigInt(i) * MAX_LOG_RANGE),
+    );
   });
 });
 
