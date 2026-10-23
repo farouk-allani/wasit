@@ -232,7 +232,8 @@ export function BondPanel({
           <p className="text-xs leading-relaxed text-muted-foreground">
             Below {percent(topUpBps)} the bond poster should top up. Below {percent(protectBps)}{" "}
             anyone can convert the BTC to MUSD to lock in its value. In a fast crash the bond can
-            still fall short: the buyer then receives what the bond holds, not more.
+            still fall short: the buyer then receives what the bond holds, not more. Coverage counts
+            1 MUSD as 1 USD.
           </p>
         )}
 
