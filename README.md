@@ -15,6 +15,7 @@
 [![audit](https://img.shields.io/badge/audit-none%20yet-0b1624?style=flat-square)](docs/security-review.md)
 [![License](https://img.shields.io/badge/license-MIT-0b1624?style=flat-square)](LICENSE)
 
+**[Live app: wasit.app](https://wasit.app)** ·
 **[Live proof](#live-proof)** ·
 **[A full deal on the explorer](https://explorer.test.mezo.org/tx/0x12a1b91615d829ebbcbe8cf411f2385860d59d511077be02ebdc95e270e7c788)** ·
 **[Security review](docs/security-review.md)** ·
@@ -250,7 +251,8 @@ cd .. && pnpm --filter @wasit/web test    # 77 web tests
 
 ## Deployed on Mezo testnet
 
-Chain 31611. All contracts are verified on the explorer.
+Chain 31611. All contracts are verified on the explorer. The web app is live at
+**[wasit.app](https://wasit.app)** (static build on Vercel; it reads Mezo testnet directly).
 
 | Contract | Live | demo-sim (simulated price feed) |
 |---|---|---|
