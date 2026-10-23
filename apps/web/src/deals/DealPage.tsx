@@ -107,17 +107,24 @@ function Row({ label, note, children }: { label: string; note?: string; children
   );
 }
 
+/** Paid, refunded and fees come from the event history; until it loads they are unknown, not 0. */
 function MoneyCard({
   deal,
-  paid,
-  refunded,
-  fees,
+  totals,
+  historyError,
 }: {
   deal: Deal;
-  paid: bigint;
-  refunded: bigint;
-  fees: bigint;
+  totals: { paid: bigint; refunded: bigint; fees: bigint } | undefined;
+  historyError: boolean;
 }) {
+  const fromHistory = (amount: bigint | undefined) =>
+    amount !== undefined ? (
+      formatMusd(amount)
+    ) : (
+      <span className="font-normal text-muted-foreground">
+        {historyError ? "unavailable" : "loading…"}
+      </span>
+    );
   const s = summarize(deal.terms);
   const upfrontPct = Number((deal.terms.advanceAmount * 10_000n) / s.total) / 100;
   return (
@@ -147,9 +154,9 @@ function MoneyCard({
           <Row label="Held in escrow now" note="balance plus the advance fee, until settlement">
             {formatMusd(deal.balanceHeld + deal.advanceFeeHeld)}
           </Row>
-          <Row label="Paid to the supplier">{formatMusd(paid)}</Row>
-          <Row label="Refunded to the buyer">{formatMusd(refunded)}</Row>
-          <Row label="Protocol fees">{formatMusd(fees)}</Row>
+          <Row label="Paid to the supplier">{fromHistory(totals?.paid)}</Row>
+          <Row label="Refunded to the buyer">{fromHistory(totals?.refunded)}</Row>
+          <Row label="Protocol fees">{fromHistory(totals?.fees)}</Row>
         </dl>
       </CardContent>
     </Card>
@@ -293,9 +300,14 @@ export function DealPage() {
         <div className="min-w-0 space-y-8">
           <MoneyCard
             deal={deal}
-            paid={view?.paidToSupplier ?? 0n}
-            refunded={view?.refundedToBuyer ?? 0n}
-            fees={view?.fees ?? 0n}
+            totals={
+              view && {
+                paid: view.paidToSupplier,
+                refunded: view.refundedToBuyer,
+                fees: view.fees,
+              }
+            }
+            historyError={history.isError}
           />
           {view ? (
             <>
