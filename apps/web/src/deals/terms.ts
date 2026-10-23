@@ -282,6 +282,33 @@ export function summarize(
   };
 }
 
+/**
+ * Parties who would sign a statement about their own goods (SECURITY-REVIEW F-3): allowed, since
+ * the buyer names everyone, but the buyer is told before creating the deal.
+ */
+export function selfAttestations(
+  t: Pick<DealTerms, "supplier" | "bonder" | "inspector" | "carrier">,
+): string[] {
+  const parties = [
+    { name: "supplier", address: t.supplier },
+    { name: "bond poster", address: t.bonder },
+  ];
+  const statements = [
+    { address: t.inspector, says: "the goods are ready", as: "inspector" },
+    { address: t.carrier, says: "the goods have shipped", as: "carrier" },
+  ];
+  return parties.flatMap((p) =>
+    p.address === zeroAddress
+      ? []
+      : statements
+          .filter((s) => isAddressEqual(p.address, s.address))
+          .map(
+            (s) =>
+              `The ${p.name} is also the ${s.as}, so it would confirm on its own that ${s.says}.`,
+          ),
+  );
+}
+
 /** keccak256 of a file's bytes, computed in the browser; the file never leaves the device. */
 export async function hashFile(file: Blob): Promise<Hex> {
   return keccak256(new Uint8Array(await file.arrayBuffer()));

@@ -1,5 +1,5 @@
 import type { DealTerms } from "@wasit/sdk";
-import { ExternalLink } from "lucide-react";
+import { CircleAlert, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { zeroAddress, type Address } from "viem";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { percent } from "@/landing/params";
 import { formatDuration, formatMusd } from "@/lib/format";
 import { explorerAddress } from "@/lib/links";
 import { PERIODS } from "./terms";
-import { summarize } from "./terms";
+import { selfAttestations, summarize } from "./terms";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -65,6 +65,7 @@ const SECONDS: Record<(typeof PERIODS)[number]["key"], keyof DealTerms> = {
 export function DealReview({ terms, termsFileName }: { terms: DealTerms; termsFileName: string }) {
   const hasBond = terms.bonder !== zeroAddress;
   const s = summarize(terms);
+  const selfSigned = selfAttestations(terms);
   const upfrontPct = Number((terms.advanceAmount * 10_000n) / s.total) / 100;
 
   return (
@@ -124,6 +125,20 @@ export function DealReview({ terms, termsFileName }: { terms: DealTerms; termsFi
           <Party role="Arbiter" address={terms.arbiter} />
           {hasBond && <Party role="Posts the BTC" address={terms.bonder} />}
         </dl>
+        {selfSigned.length > 0 && (
+          <div className="flex gap-3 rounded-lg bg-warning/15 px-4 py-3 text-sm leading-relaxed">
+            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            <div className="space-y-1">
+              {selfSigned.map((w) => (
+                <p key={w}>{w}</p>
+              ))}
+              <p>
+                This is allowed, but nobody independent checks that step. Name someone else if you
+                can.
+              </p>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Deadlines">
