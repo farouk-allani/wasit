@@ -15,29 +15,51 @@ export interface DealContracts {
   bond: Address;
   deployBlock: bigint;
 }
-export type LogReader = Pick<PublicClient, "getContractEvents" | "getBlockNumber" | "getBlock">;
+export type LogReader = Pick<PublicClient, "getLogs" | "getBlockNumber" | "getBlock">;
 
-/** Escrow and bond logs in [fromBlock, toBlock], read in ranges the RPC accepts. */
+/**
+ * Ranges read at the same time. The public RPC takes ~1 s per range and the chain grows ~18,500
+ * blocks a day, so a sequential scan from deployBlock gets slower every day (12 ranges: 12.5 s
+ * one by one, 3.5–4.5 s with 4–8 at once, measured 2026-10-23).
+ */
+export const LOG_CONCURRENCY = 6;
+
+/**
+ * Escrow and bond events, read with one eth_getLogs per range for both addresses (the RPC's
+ * throughput, not latency, is the limit). The two ABIs share only Ownable2Step's events, with
+ * identical signatures, so every log decodes the same as with its own contract's ABI.
+ */
+const DEAL_EVENTS = [...wasitEscrowAbi, ...advanceBondAbi].filter(
+  (item): item is Extract<typeof item, { type: "event" }> => item.type === "event",
+);
+
+/** Escrow and bond logs in [fromBlock, toBlock], read in ranges the RPC accepts (any order). */
 export async function fetchDealLogs(
   client: LogReader,
   c: DealContracts,
   fromBlock: bigint,
   toBlock: bigint,
 ): Promise<DealLog[]> {
-  const logs: DealLog[] = [];
+  const ranges: { fromBlock: bigint; toBlock: bigint }[] = [];
   for (let start = fromBlock; start <= toBlock; start += MAX_LOG_RANGE) {
     const last = start + MAX_LOG_RANGE - 1n;
-    const range = {
-      fromBlock: start,
-      toBlock: last < toBlock ? last : toBlock,
-      strict: true,
-    } as const;
-    const [escrow, bond] = await Promise.all([
-      client.getContractEvents({ ...range, address: c.escrow, abi: wasitEscrowAbi }),
-      client.getContractEvents({ ...range, address: c.bond, abi: advanceBondAbi }),
-    ]);
-    logs.push(...escrow, ...bond);
+    ranges.push({ fromBlock: start, toBlock: last < toBlock ? last : toBlock });
   }
+  const logs: DealLog[] = [];
+  let nextRange = 0;
+  const worker = async () => {
+    while (nextRange < ranges.length) {
+      const range = ranges[nextRange++]!;
+      const found = await client.getLogs({
+        ...range,
+        address: [c.escrow, c.bond],
+        events: DEAL_EVENTS,
+        strict: true,
+      });
+      logs.push(...(found as DealLog[]));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(LOG_CONCURRENCY, ranges.length) }, worker));
   return logs;
 }
 
