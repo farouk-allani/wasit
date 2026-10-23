@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { percent } from "@/landing/params";
-import { formatDuration, formatMusd } from "@/lib/format";
+import { formatBytes, formatDuration, formatMusd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   feeOn,
@@ -188,7 +188,7 @@ function TermsDrop() {
     setHashing(true);
     try {
       setValue("termsHash", await hashFile(file), { shouldValidate: true });
-      setValue("termsFileName", `${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      setValue("termsFileName", `${file.name} (${formatBytes(file.size)})`);
     } finally {
       setHashing(false);
     }

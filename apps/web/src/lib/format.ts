@@ -29,6 +29,15 @@ export function formatDuration(seconds: number): string {
   return parts.length ? parts.join(" ") : `${seconds} s`;
 }
 
+const NBSP = "\u00a0";
+
+/** A file size, e.g. "512 bytes", "40.2 KB", "1.5 MB", with a no-break space before the unit. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1_024) return `${bytes}${NBSP}${bytes === 1 ? "byte" : "bytes"}`;
+  if (bytes < 1_024 * 1_024) return `${(bytes / 1_024).toFixed(1)}${NBSP}KB`;
+  return `${(bytes / (1_024 * 1_024)).toFixed(1)}${NBSP}MB`;
+}
+
 /** A BTC amount (18 decimals on Mezo), truncated to `maxDecimals`, trailing zeros dropped. */
 export function formatBtc(amount: bigint, maxDecimals = 6): string {
   const [whole = "0", fraction = ""] = formatUnits(amount, 18).split(".");
