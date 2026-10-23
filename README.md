@@ -16,6 +16,7 @@
 [![License](https://img.shields.io/badge/license-MIT-0b1624?style=flat-square)](LICENSE)
 
 **[Live app: wasit.app](https://wasit.app)** ·
+**[Demo video](https://youtu.be/FLnJNJjdF8I)** ·
 **[Live proof](#live-proof)** ·
 **[A full deal on the explorer](https://explorer.test.mezo.org/tx/0x12a1b91615d829ebbcbe8cf411f2385860d59d511077be02ebdc95e270e7c788)** ·
 **[Security review](docs/security-review.md)** ·
@@ -31,7 +32,10 @@ Disputes go to an arbiter both sides named up front.
 
 BTC-secured, with limits: Mezo testnet, not audited. See [Limits](#limits).
 
-![The Wasit landing page: protected advance payments, built on Mezo](docs/images/landing.jpg)
+[![Watch the Wasit demo: a real deal on Mezo testnet, from creation to release](docs/images/demo-video.jpg)](https://youtu.be/FLnJNJjdF8I)
+
+*Watch the demo (2:41): what Wasit is for, then a real 100 MUSD deal run through the app on Mezo
+testnet, from creation to release, and what happens when things go wrong.*
 
 ## The problem
 
