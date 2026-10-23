@@ -5,6 +5,7 @@ import {
   dealFormSchema,
   feeOn,
   hashFile,
+  selfAttestations,
   splitOrder,
   summarize,
   toDealTerms,
@@ -125,5 +126,33 @@ describe("summarize", () => {
     expect(s.netBalance).toBe(6_965n * m);
     expect(s.advanceFee + s.balanceFee).toBe(50n * m);
     expect(s.bondTarget).toBe(44_775n * (m / 10n));
+  });
+});
+
+describe("selfAttestations", () => {
+  const parties = {
+    supplier: valid.supplier as Address,
+    bonder: valid.bonder as Address,
+    inspector: valid.inspector as Address,
+    carrier: valid.carrier as Address,
+  };
+
+  it("is empty when every attestor is independent", () => {
+    expect(selfAttestations(parties)).toEqual([]);
+  });
+
+  it("flags the supplier and the bond poster signing about their own goods", () => {
+    const warnings = selfAttestations({
+      ...parties,
+      inspector: parties.supplier,
+      carrier: parties.bonder.toUpperCase().replace("0X", "0x") as Address,
+    });
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]).toMatch(/supplier is also the inspector/);
+    expect(warnings[1]).toMatch(/bond poster is also the carrier/);
+  });
+
+  it("ignores a missing bond", () => {
+    expect(selfAttestations({ ...parties, bonder: zeroAddress, carrier: zeroAddress })).toEqual([]);
   });
 });
