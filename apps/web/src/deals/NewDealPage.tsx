@@ -110,8 +110,8 @@ function Stepper({
 function SheetRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-end font-semibold">{children}</dd>
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-end font-semibold">{children}</dd>
     </div>
   );
 }
@@ -158,7 +158,7 @@ function LiveSheet() {
             )}
           </SheetRow>
           <SheetRow label="Terms file">
-            {v.termsHash ? <span className="break-all">{v.termsFileName}</span> : dash}
+            {v.termsHash ? <span className="wrap-anywhere">{v.termsFileName}</span> : dash}
           </SheetRow>
         </dl>
       </CardContent>
