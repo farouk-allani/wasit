@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-  { ignores: ["dist/"] },
+  { ignores: ["dist/", ".vercel/"] },
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   reactHooks.configs.flat["recommended-latest"],
