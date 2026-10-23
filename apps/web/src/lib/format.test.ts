@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBtc, formatDuration, formatMusd, formatRelative } from "./format";
+import { formatBtc, formatBytes, formatDuration, formatMusd, formatRelative } from "./format";
 
 const musd = 10n ** 18n;
 
@@ -34,5 +34,14 @@ describe("formatRelative", () => {
     expect(formatRelative(1_000n, 1_000n + 7_200n)).toBe("2 h ago");
     expect(formatRelative(1_030n, 1_000n)).toBe("in under a minute");
     expect(formatRelative(0n, 3n * 86_400n + 3_725n)).toBe("3 days 1 h ago");
+  });
+});
+
+describe("formatBytes", () => {
+  it("shows small files in bytes, not 0.0 KB", () => {
+    expect(formatBytes(1)).toBe("1\u00a0byte");
+    expect(formatBytes(47)).toBe("47\u00a0bytes");
+    expect(formatBytes(41_190)).toBe("40.2\u00a0KB");
+    expect(formatBytes(1_572_864)).toBe("1.5\u00a0MB");
   });
 });
