@@ -8,7 +8,8 @@
     "seed": "tsx src/seed.ts",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "pilot": "tsx src/pilot.ts"
   },
   "dependencies": {
     "viem": "2.57.2"
