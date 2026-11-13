@@ -348,7 +348,10 @@ export function AttestPage() {
   const { id: raw } = useParams();
   const { search } = useLocation();
   const id = raw && /^\d+$/.test(raw) ? BigInt(raw) : undefined;
-  const { address } = useAccount();
+  const { address, connector } = useAccount();
+  // An invited signer on the test wallet never relays; the paste box is for whoever does
+  const relayView =
+    connector?.id !== PILOT_CONNECTOR_ID || new URLSearchParams(search).has("statement");
   const live = useDealLive(id);
   const now = useNow();
   const back = (
@@ -435,7 +438,7 @@ export function AttestPage() {
               : `Connect the ${exp.role}'s wallet to sign, or paste a statement they signed below.`}
           </p>
         ))}
-      {!late && <SubmitPasted dealId={id} exp={exp} nonce={deal.attestationNonce} />}
+      {!late && relayView && <SubmitPasted dealId={id} exp={exp} nonce={deal.attestationNonce} />}
     </div>
   );
 }
