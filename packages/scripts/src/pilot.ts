@@ -8,6 +8,8 @@
  *   pilot next <dealId>                runs every step a team wallet can take now, then prints the
  *                                      invite link of whoever must act (or how long to wait)
  *   pilot relay <link | JSON>          submits a statement signed by an outside inspector/carrier
+ *   pilot verify <statement.json>      checks a signed participant statement (docs/pilot/) against
+ *                                      the deal on chain: signer, named role, step accepted
  *
  * Roles: buyer, supplier, inspector, carrier, arbiter, bonder.
  * Usage: pnpm --filter @wasit/scripts pilot <command> ...   (after `forge build` in contracts/)
@@ -24,6 +26,7 @@ import {
   parseUnits,
   recoverTypedDataAddress,
   toBytes,
+  verifyMessage,
   type Address,
   type Hex,
 } from "viem";
@@ -428,6 +431,44 @@ async function relay(ctx: Ctx, input: string) {
   return id;
 }
 
+/** Checks a participant's signed statement against the deal it names (PLAN 9.3). */
+async function verify(ctx: Ctx, file: string) {
+  const s = JSON.parse(readFileSync(file, "utf8")) as {
+    message: string;
+    address: Address;
+    signature: Hex;
+  };
+  const ok = await verifyMessage({
+    address: s.address,
+    message: s.message,
+    signature: s.signature,
+  });
+  if (!ok) throw new Error("the signature does not match the address");
+  const field = (key: string) => s.message.match(new RegExp(`^${key}: (.+)$`, "m"))?.[1];
+  const deal = field("Deal")?.match(/^#(\d+) on escrow (0x[0-9a-fA-F]{40}),/);
+  const role = field("Role");
+  const wallet = field("Wallet");
+  if (!deal || !role || !isRole(role) || !wallet || !isAddress(wallet))
+    throw new Error("not a statement");
+  if (!isAddressEqual(wallet, s.address)) throw new Error("statement names another wallet");
+  if (!isAddressEqual(getAddress(deal[2]!), live.escrow))
+    throw new Error("statement is for another escrow");
+  const id = BigInt(deal[1]!);
+  const onChain = await readDeal(ctx, id);
+  const named = onChain.terms[role];
+  if (!isAddressEqual(named, s.address)) throw new Error(`deal ${id} names ${named} as ${role}`);
+  if (team(ctx, s.address)) throw new Error("this is a team wallet");
+  const step =
+    role === "inspector"
+      ? onChain.attestationNonce >= 1
+      : role === "carrier"
+        ? onChain.attestationNonce >= 2
+        : true;
+  console.log(`OK: ${s.address} signed this statement and is the ${role} of deal ${id}`);
+  console.log(step ? "its step was accepted on chain" : "its step is not on chain yet");
+  console.log(`city: ${field("City")}; describe as: ${field("Describe me as")}`);
+}
+
 const [command, ...args] = process.argv.slice(2);
 const ctx = await connect();
 if (command === "fund") {
@@ -452,7 +493,9 @@ if (command === "fund") {
   await next(ctx, BigInt(args[0]));
 } else if (command === "relay" && args[0]) {
   await next(ctx, await relay(ctx, args[0]));
+} else if (command === "verify" && args[0]) {
+  await verify(ctx, args[0]);
 } else {
-  throw new Error("usage: pilot fund|deal|next|relay … (see the header of src/pilot.ts)");
+  throw new Error("usage: pilot fund|deal|next|relay|verify … (see the header of src/pilot.ts)");
 }
 console.log(JSON.stringify(ctx.sent, null, 2));
