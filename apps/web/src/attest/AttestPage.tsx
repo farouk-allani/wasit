@@ -230,6 +230,12 @@ function SignFlow({
                     <Button size="lg" className="w-full" onClick={sendBack}>
                       <Send /> Send signed statement
                     </Button>
+                    <Link
+                      to={`/statement/${dealId}/${exp.role}${search}`}
+                      className="block text-center text-sm text-gold hover:underline"
+                    >
+                      Optional: sign a short statement that this wallet is yours
+                    </Link>
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
