@@ -5,6 +5,7 @@ import { NetworkGuard } from "@/components/NetworkGuard";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { LiveSimulationNotice } from "@/components/layout/SimulationNotice";
+import { PilotWalletBar } from "@/pilot/PilotWalletBar";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { Providers } from "@/providers";
 
@@ -19,6 +20,7 @@ export function Component() {
       <div className="flex min-h-dvh flex-col">
         <SkipLink />
         <LiveSimulationNotice />
+        <PilotWalletBar />
         <SiteHeader
           variant="app"
           actions={<ConnectButton chainStatus="icon" showBalance={false} accountStatus="address" />}
