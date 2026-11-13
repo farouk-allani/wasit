@@ -40,6 +40,10 @@ export const router = createBrowserRouter([
         path: "/invite/:id/:role",
         lazy: () => import("./pilot/InvitePage").then((m) => ({ Component: m.InvitePage })),
       },
+      {
+        path: "/statement/:id/:role",
+        lazy: () => import("./pilot/StatementPage").then((m) => ({ Component: m.StatementPage })),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },
