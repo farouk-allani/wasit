@@ -32,6 +32,14 @@ export const router = createBrowserRouter([
         path: "/arbiter/:id",
         lazy: () => import("./arbiter/ArbiterPage").then((m) => ({ Component: m.ArbiterPage })),
       },
+      {
+        path: "/join",
+        lazy: () => import("./pilot/JoinPage").then((m) => ({ Component: m.JoinPage })),
+      },
+      {
+        path: "/invite/:id/:role",
+        lazy: () => import("./pilot/InvitePage").then((m) => ({ Component: m.InvitePage })),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },
