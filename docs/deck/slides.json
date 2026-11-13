@@ -1,0 +1,146 @@
+{
+  "version": "Wave 2 · version 1 · 13 Nov 2026",
+  "footer": "Wasit · Mezo testnet · not audited",
+  "slides": [
+    {
+      "kind": "cover",
+      "eyebrow": "Mezo Buildathon · Wave 2",
+      "title": "Wasit",
+      "lede": "Protecting advance payments in stablecoin trade.",
+      "body": "A BTC bond on Mezo stands behind the supplier's production advance. The balance waits in MUSD escrow until named people sign.",
+      "meta": ["Live on Mezo testnet", "wasit.app", "github.com/farouk-allani/wasit"]
+    },
+    {
+      "kind": "stats",
+      "theme": "dark",
+      "eyebrow": "The problem",
+      "title": "The advance leaves before the goods exist.",
+      "rows": [
+        { "figure": "30%", "text": "A common production deposit, paid to the supplier before anything is made." },
+        { "figure": "Final", "text": "A stablecoin transfer cannot be pulled back. If the supplier goes quiet, so does the money." },
+        { "figure": "41%", "text": "of SME trade-finance requests are rejected, so the bank route, a letter of credit, is often closed to small firms." }
+      ],
+      "source": "41%: Asian Development Bank, Global Trade Finance Gap Survey, press release of 4 Feb 2026 (large and mid-size firms: 40%)."
+    },
+    {
+      "kind": "steps",
+      "theme": "paper",
+      "eyebrow": "How it works",
+      "title": "Bitcoin behind the advance. The balance waits for signatures.",
+      "steps": [
+        { "head": "Terms fixed first", "text": "Buyer, supplier, inspector, carrier, arbiter, amounts, deadlines and a hash of the terms document are set before money moves." },
+        { "head": "BTC bond", "text": "The supplier or their sourcing agent locks BTC on Mezo, 150% of the net advance in our deals, priced by the Skip BTC/USD feed." },
+        { "head": "Advance to the supplier", "text": "The buyer pays the advance in MUSD with one permit signature. It goes straight to the supplier for production." },
+        { "head": "Balance on signatures", "text": "The balance is held in MUSD escrow. It is released after the inspector signs READY, the carrier signs SHIPPED and a challenge window passes." }
+      ],
+      "image": "assets/11-bond-posted.jpg",
+      "caption": "Deal page on testnet: bond coverage 151.5%, every event linked to the explorer."
+    },
+    {
+      "kind": "table",
+      "theme": "paper",
+      "eyebrow": "When it goes wrong",
+      "title": "Every exit is written into the deal, and none can be paused.",
+      "head": ["If", "Then"],
+      "rows": [
+        ["The supplier misses a deadline", "The escrow refunds what it holds; the bond pays the advance back to the buyer"],
+        ["The buyer never funds the balance", "The supplier keeps the advance"],
+        ["The buyer disputes", "The named arbiter splits the balance and decides the bond"],
+        ["BTC falls below 130% coverage", "The bond poster is asked to top up"],
+        ["BTC falls below 115% coverage", "Anyone can convert the bond to MUSD, so its value stops falling with BTC"]
+      ],
+      "image": "assets/28-default.jpg",
+      "caption": "Live deal #3: the supplier missed the production deadline and the buyer got all 30 MUSD back."
+    },
+    {
+      "kind": "grid",
+      "theme": "dark",
+      "eyebrow": "Built on Mezo",
+      "title": "Each deal is MUSD demand from people who trade goods.",
+      "items": [
+        { "head": "MUSD", "text": "Settlement currency for advance, balance and refunds, paid with EIP-2612 permits." },
+        { "head": "BTC on Mezo", "text": "Bond collateral, through BTC's ERC-20 precompile." },
+        { "head": "Skip BTC/USD", "text": "Prices the bond, with staleness and bounds checks. A Pyth adapter is implemented and fork-tested." },
+        { "head": "Mezo Router", "text": "Turns bond BTC into MUSD on default or protection, with an oracle-bounded minimum." },
+        { "head": "Mezo Passport", "text": "Wallet connection in the app. Tested with EVM wallets; Bitcoin wallets not tested yet." },
+        { "head": "MUSD borrowing system", "text": "Mapped on testnet for Wave 2: minimum trove debt 2,000 MUSD, liquidation at 110%." }
+      ]
+    },
+    {
+      "kind": "proof",
+      "theme": "paper",
+      "eyebrow": "Live on Mezo testnet",
+      "title": "Every step is a real transaction.",
+      "rows": [
+        ["Released through the web app", "Deals #5 and #6, six wallets, ten transactions each"],
+        ["Released, scripted", "Deal #2: 99.5 MUSD to the supplier, 0.5 MUSD fee, bond returned"],
+        ["Supplier default", "Deal #3: the bond sold BTC on the Mezo pool; the buyer got 30 of 30 MUSD back"],
+        ["Bond protection", "Coverage 113.6% on a labeled simulated price feed; BTC sold on the real pool"],
+        ["Open dispute", "Deal #4: 70 MUSD held for the arbiter"]
+      ],
+      "figures": [
+        { "figure": "263", "text": "contract tests: unit, fuzz, invariant" },
+        { "figure": "100%", "text": "line and branch coverage of the contracts" },
+        { "figure": "77", "text": "web tests, CI on every pull request" }
+      ],
+      "note": "Contracts verified on the Mezo testnet explorer. Escrow 0x9d75…fC85 · bond 0x1954…5Ad0. Every hash is in the README."
+    },
+    {
+      "kind": "split",
+      "theme": "dark",
+      "eyebrow": "Safety and limits",
+      "title": "BTC-secured, with limits.",
+      "left": {
+        "head": "What the contracts refuse",
+        "items": [
+          "The owner can never move deal funds or bond collateral.",
+          "Release, refund, claim and dispute rulings can never be paused.",
+          "Refunds from escrow never depend on the bond or its price feed.",
+          "No upgradeable proxies."
+        ]
+      },
+      "right": {
+        "head": "What can still go wrong",
+        "items": [
+          "In a fast BTC crash the bond can fall short of the advance. The app shows coverage at all times.",
+          "MUSD is counted as 1 USD.",
+          "A signature proves the named person signed. It does not prove the goods shipped.",
+          "Testnet only. Not audited."
+        ]
+      }
+    },
+    {
+      "kind": "split",
+      "theme": "paper",
+      "eyebrow": "Who it is for",
+      "title": "Sourcing agents already vouch for suppliers. Wasit lets them back it.",
+      "left": {
+        "head": "First users",
+        "items": [
+          "Sourcing agents who coordinate buyers, factories and inspections, and can post a bond for a supplier who holds no BTC.",
+          "Then the importers and suppliers they work with.",
+          "Freight forwarders and inspectors, who already sign for goods, in the carrier and inspector roles."
+        ]
+      },
+      "right": {
+        "head": "Business model to test",
+        "items": [
+          "A fee of 0.5% on value actually settled to the supplier. No fee on refunds.",
+          "The fee is set on chain and capped by the contract.",
+          "No fee has been paid by anyone yet: everything so far ran on testnet."
+        ]
+      }
+    },
+    {
+      "kind": "close",
+      "eyebrow": "Wasit",
+      "title": "BTC-secured, with limits. Live on testnet today.",
+      "links": [
+        ["App", "wasit.app"],
+        ["Code, tests and every transaction", "github.com/farouk-allani/wasit"],
+        ["Demo video", "linked from the README"]
+      ],
+      "team": "Farouk Allani · full-stack blockchain developer, DAR Blockchain"
+    }
+  ]
+}
