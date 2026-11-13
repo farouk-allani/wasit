@@ -1,5 +1,5 @@
 import { AttestationKind, wasitEscrowAbi } from "@wasit/sdk";
-import { ArrowLeft, Check, Copy, FileCheck2, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Check, Copy, FileCheck2, LoaderCircle, Send } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useParams } from "react-router";
@@ -24,6 +24,8 @@ import { useDealTx } from "@/deals/useDealTx";
 import { useDeployment } from "@/deployment";
 import { formatRelative, formatTime } from "@/lib/format";
 import { explorerAddress } from "@/lib/links";
+import { PILOT_CONNECTOR_ID } from "@/pilot/pilotWallet";
+import { fromParam, shareText, toParam } from "@/pilot/share";
 import {
   attestationTypedData,
   decodeAttestation,
@@ -81,6 +83,9 @@ function SignFlow({
   account: Address;
 }) {
   const d = useDeployment();
+  const { search } = useLocation();
+  const { connector } = useAccount();
+  const testWallet = connector?.id === PILOT_CONNECTOR_ID;
   const { data: wallet } = useWalletClient();
   const { tx, submit } = useSubmit(dealId);
   const [file, setFile] = useState<{ name: string; hash: Hex }>();
@@ -139,6 +144,22 @@ function SignFlow({
     setCopied(true);
   };
 
+  // A test wallet has no gas: its statement goes back as a link that anyone opens to submit it
+  const relayLink = () => {
+    const params = new URLSearchParams(search);
+    params.set("statement", toParam(encodeAttestation(signed!)));
+    return `${window.location.origin}/attest/${dealId}?${params.toString()}`;
+  };
+  const sendBack = () =>
+    void shareText(
+      `Signed ${exp.role} statement for Wasit test deal #${dealId}. Open to put it on-chain: ${relayLink()}`,
+    );
+
+  const pickNote = (text: string) =>
+    void pick(
+      text.trim() ? new File([text.trim()], "note.txt", { type: "text/plain" }) : undefined,
+    );
+
   return (
     <Card className="gap-6">
       <CardHeader>
@@ -156,6 +177,20 @@ function SignFlow({
               type="file"
               onChange={(e) => void pick(e.target.files?.[0])}
               className="block w-full text-sm file:me-4 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-semibold"
+            />
+          )}
+        </Field>
+        <Field
+          id="evidence-note"
+          label="No file? Write what you checked instead"
+          hint="The note is fingerprinted the same way and is not uploaded."
+        >
+          {(aria) => (
+            <textarea
+              {...aria}
+              rows={2}
+              onChange={(e) => pickNote(e.target.value)}
+              className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
             />
           )}
         </Field>
@@ -185,18 +220,33 @@ function SignFlow({
             {signed && (
               <div className="space-y-3 border-t pt-6">
                 <h3 className="font-semibold">3 · Put it on-chain</h3>
-                <p className="text-sm text-muted-foreground">
-                  Submit it now from this wallet, or copy it for the buyer, supplier or anyone else
-                  to submit. The signature is what counts, not who sends it.
-                </p>
+                {testWallet ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Your test wallet holds no tokens, so send the signed statement back to the
+                      person who invited you. They put it on the test network; the signature is what
+                      counts, not who sends it.
+                    </p>
+                    <Button size="lg" className="w-full" onClick={sendBack}>
+                      <Send /> Send signed statement
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Submit it now from this wallet, or copy it for the buyer, supplier or anyone
+                    else to submit. The signature is what counts, not who sends it.
+                  </p>
+                )}
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    className="flex-1"
-                    disabled={tx.running}
-                    onClick={() => void submit(signed)}
-                  >
-                    Submit now
-                  </Button>
+                  {!testWallet && (
+                    <Button
+                      className="flex-1"
+                      disabled={tx.running}
+                      onClick={() => void submit(signed)}
+                    >
+                      Submit now
+                    </Button>
+                  )}
                   <Button variant="outline" className="flex-1" onClick={() => void copy()}>
                     {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy signed statement"}
                   </Button>
@@ -223,7 +273,12 @@ function SubmitPasted({
 }) {
   const d = useDeployment();
   const { tx, submit } = useSubmit(dealId);
-  const [text, setText] = useState("");
+  const { search } = useLocation();
+  // Opened from a "Send signed statement" link: the statement arrives filled in
+  const [text, setText] = useState(() => {
+    const p = new URLSearchParams(search).get("statement");
+    return (p && fromParam(p)) ?? "";
+  });
   const parsed = text.trim() ? decodeAttestation(text) : undefined;
   const problem = !text.trim()
     ? undefined
