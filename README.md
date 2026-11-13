@@ -17,6 +17,7 @@
 
 **[Live app: wasit.app](https://wasit.app)** ·
 **[Demo video](https://youtu.be/FLnJNJjdF8I)** ·
+**[Deck (PDF)](docs/wasit-deck.pdf)** ·
 **[Live proof](#live-proof)** ·
 **[A full deal on the explorer](https://explorer.test.mezo.org/tx/0x12a1b91615d829ebbcbe8cf411f2385860d59d511077be02ebdc95e270e7c788)** ·
 **[Security review](docs/security-review.md)** ·
