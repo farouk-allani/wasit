@@ -39,6 +39,11 @@ done during the Mezo Buildathon, what they found, and what you still have to tru
   exit. Release, refunds, default claims, dispute rulings and bond settlement keep working while
   new deals are paused. There is no upgradeable proxy.
 
+**Trove mode (`TroveBond`, Wave 2) has no owner at all.** Nothing in it can be configured after
+deployment, nothing can be paused, and only the escrow (claim, release) and the named bond poster
+(withdraw before the advance, close) can make a vault move assets. Each vault answers only the
+`TroveBond` that created it.
+
 ## What you still trust
 
 - **The people named in the deal.** The inspector and the carrier sign statements with a file
@@ -54,6 +59,13 @@ done during the Mezo Buildathon, what they found, and what you still have to tru
   before anyone protects it. The buyer then receives what the bond holds, and the shortfall is
   reported on-chain.
 - **MUSD is valued at 1 USD.**
+- **In trove mode, Mezo's MUSD borrowing system.** The bond relies on BorrowerOperations and
+  TroveManager behaving as their verified source does; BorrowerOperations is an upgradeable proxy
+  under Mezo governance (7-day delay on rate and minimum-debt changes). The buyer's cover is MUSD
+  held in the vault, so a BTC fall, a liquidation or a redemption does not reduce it; those are the
+  bond poster's risks. Closing a trove is refused while the system is in recovery mode (below 150%),
+  which delays the poster's BTC, never the buyer. MUSD's PriceFeed, which prices trove health and
+  new bonds, wraps the same Skip feed and refuses prices older than 60 seconds.
 
 ## Found a problem?
 
