@@ -14,6 +14,7 @@ import { ActionStatus } from "./ActionStatus";
 import { btcForCoverage, withMargin } from "./bondMath";
 import type { DealAction } from "./dealStatus";
 import { summarize } from "./terms";
+import { TroveBondPanel } from "./TroveBondPanel";
 import { useDealTx, type TxStep } from "./useDealTx";
 import { useEscrowConfig } from "./useEscrowConfig";
 
@@ -145,6 +146,7 @@ export function BondPanel({
 }) {
   const d = useDeployment();
   const config = useEscrowConfig();
+  const troveMode = "bondKind" in d && d.bondKind === "trove";
   const has = (id: DealAction["id"]) => actions.some((a) => a.id === id && a.mine);
   const posted = bond.status !== BondStatus.None;
   const topUpBps = posted ? bond.topUpRatioBps : config.data?.topUpRatioBps;
@@ -153,6 +155,16 @@ export function BondPanel({
   const ratio = BigInt(deal.terms.bondRatioBps);
   const required = btcPrice ? btcForCoverage(covered, ratio, btcPrice) : undefined;
 
+  if (troveMode)
+    return (
+      <TroveBondPanel
+        dealId={dealId}
+        deal={deal}
+        bond={bond}
+        coverageBps={coverageBps}
+        account={account}
+      />
+    );
   if (deal.terms.bonder === zeroAddress)
     return (
       <Card className="gap-3">
