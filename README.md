@@ -9,9 +9,9 @@
 [![Mezo](https://img.shields.io/badge/mezo-testnet%2031611-ddb886?style=flat-square)](https://explorer.test.mezo.org/address/0x9d7573dd4A929311DDFC130ED085127517A9fC85)
 [![CI](https://img.shields.io/github/actions/workflow/status/farouk-allani/wasit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/farouk-allani/wasit/actions/workflows/ci.yml)
 [![Solidity](https://img.shields.io/badge/solidity-0.8.28-0b1624?style=flat-square)](contracts/)
-[![contract tests](https://img.shields.io/badge/contract%20tests-263%20passing-ddb886?style=flat-square)](#tests)
+[![contract tests](https://img.shields.io/badge/contract%20tests-272%20passing-ddb886?style=flat-square)](#tests)
 [![coverage](https://img.shields.io/badge/coverage-100%25%20lines%20%26%20branches-ddb886?style=flat-square)](#tests)
-[![web tests](https://img.shields.io/badge/web%20tests-77%20passing-ddb886?style=flat-square)](#tests)
+[![web tests](https://img.shields.io/badge/web%20tests-95%20passing-ddb886?style=flat-square)](#tests)
 [![audit](https://img.shields.io/badge/audit-none%20yet-0b1624?style=flat-square)](docs/security-review.md)
 [![License](https://img.shields.io/badge/license-MIT-0b1624?style=flat-square)](LICENSE)
 
@@ -205,15 +205,17 @@ the supplier: no fee on refunds, none on the bond. Escrowed MUSD is never deposi
 - **MUSD settles the trade.** A dollar stablecoin on the same chain as the collateral. It supports
   EIP-2612 permits (its EIP-5267 domain is read on-chain), so paying is one signature and one
   transaction.
-- **On-chain price and liquidity.** The Skip BTC/USD feed prices coverage, and the Mezo Router turns
-  bond BTC into MUSD when a deal needs it, against the real MUSD/BTC pool.
+- **On-chain price and liquidity.** New bonds are priced by MUSD's own PriceFeed, the price the MUSD
+  system liquidates troves on, under its 60-second staleness rule. The Mezo Router turns bond BTC
+  into MUSD when a deal needs it, against the real MUSD/BTC pool.
 - **Mezo Passport** puts Bitcoin wallets (Unisat, OKX, Xverse) and EVM wallets in one connect dialog.
 
 | Piece | How Wasit uses it |
 |---|---|
 | **MUSD** | Advance, balance, refunds and fees; funding with an EIP-2612 permit, or approve and pay |
 | **BTC (ERC-20 precompile)** | Bond collateral, posted and returned as BTC on Mezo |
-| **Skip BTC/USD** | Live price for coverage, protection and claims, with staleness and bounds checks |
+| **MUSD PriceFeed** | Prices every bond posted since 14 Nov 2026 ([`MusdPriceFeedAdapter`](contracts/src/oracles/MusdPriceFeedAdapter.sol)). A price older than 60 seconds is refused and the app says the price is unavailable. It wraps the same Skip BTC/USD feed, so it is not a second price source: a bond is valued exactly as MUSD values collateral |
+| **Skip BTC/USD** | Underneath the PriceFeed; read directly by bonds posted before 14 Nov 2026, with staleness and bounds checks |
 | **Pyth** | Second oracle adapter, implemented and fork-tested; not deployed while its testnet feed is stale |
 | **Mezo Router** | Sells bond BTC for MUSD on protection or a claim, with an oracle-bounded minimum output |
 | **Mezo Passport** | Wallet connection in the web app |
@@ -222,15 +224,15 @@ the supplier: no fee on refunds, none on the bond. Escrowed MUSD is never deposi
 
 ```sh
 cd contracts
-forge test                          # 263 tests: unit, fuzz and invariant
+forge test                          # 272 tests: unit, fuzz and invariant
 FOUNDRY_PROFILE=ci forge test       # same, with 10,000 fuzz runs and deeper invariant runs
 forge coverage --report summary --no-match-coverage "(test|script)/"
 MEZO_TESTNET_RPC=https://rpc.test.mezo.org FOUNDRY_PROFILE=fork forge test   # against Mezo testnet
 
-cd .. && pnpm --filter @wasit/web test    # 77 web tests
+cd .. && pnpm --filter @wasit/web test    # 95 web tests
 ```
 
-- **Coverage:** 100% of lines (534/534), statements, branches (138/138) and functions in `src/`.
+- **Coverage:** 100% of lines (555/555), statements, branches (147/147) and functions in `src/`.
 - **Fuzzing** (10,000 runs each in CI): fee and payment splits, arbiter rulings, bond claims, the
   coverage formula, protection prices, statements signed with the wrong key, oracle decimals.
 - **Invariants** (random call sequences, 256 runs × depth 128 in CI, with moving BTC prices, pool
@@ -263,7 +265,7 @@ Chain 31611. All contracts are verified on the explorer. The web app is live at
 |---|---|---|
 | WasitEscrow | [`0x9d7573dd…9fC85`](https://explorer.test.mezo.org/address/0x9d7573dd4A929311DDFC130ED085127517A9fC85) | [`0xFa1B4Edf…03A23`](https://explorer.test.mezo.org/address/0xFa1B4EdffAEc7B152c9a72eEe526D887db503A23) |
 | AdvanceBond | [`0x195474AF…f5Ad0`](https://explorer.test.mezo.org/address/0x195474AF5d673e1597Eb31E978a57F81892f5Ad0) | [`0xBE4bA4F1…7330A`](https://explorer.test.mezo.org/address/0xBE4bA4F159cC37D82EaF65445acD5c58f847330A) |
-| Price oracle | [Skip adapter `0xf672c00d…299A`](https://explorer.test.mezo.org/address/0xf672c00d3b4937110E50fc97496c82c0Ea12299A) | [DemoOracle `0x4B076a87…7EB1`](https://explorer.test.mezo.org/address/0x4B076a87367F47CfBe41E7D339D256933A617EB1) |
+| Price oracle for new bonds | [MUSD PriceFeed adapter `0x43DBC654…B4cB`](https://explorer.test.mezo.org/address/0x43DBC6543b86495564ee17b143Aba7B12053B4cB) (since 14 Nov 2026, [setOracle](https://explorer.test.mezo.org/tx/0x2319630fd7b926483c9def9d741162d69986698a120eeb5e7385d60e020d0d29)); earlier bonds: [Skip adapter `0xf672c00d…299A`](https://explorer.test.mezo.org/address/0xf672c00d3b4937110E50fc97496c82c0Ea12299A) | [DemoOracle `0x4B076a87…7EB1`](https://explorer.test.mezo.org/address/0x4B076a87367F47CfBe41E7D339D256933A617EB1) |
 | Swap adapter | [`0x9B9Ae691…3Ea84`](https://explorer.test.mezo.org/address/0x9B9Ae691ce29Ef9D8be38f5Ff2ffD77FE143Ea84) | [`0x72143A06…A8163`](https://explorer.test.mezo.org/address/0x72143A060E09585079FE2E20958574b697EA8163) |
 
 The demo-sim set exists only to show a price crash on demand. Its oracle reports
