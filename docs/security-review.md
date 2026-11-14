@@ -57,7 +57,7 @@ an outside redemption hit it mid-deal: the buyer was paid in full and the bond p
 | W2-7 | Info | An invite link's `from=` name is shown as "X invited you" and could be set to anything | Limited to 40 characters and shown as plain text; the deal's own addresses are on the page |
 
 **Static analysis.** Slither (102 detectors) on the new contracts: an "arbitrary from" in
-`TroveBond.close` is a false positive (`close` requires the caller to be the bonder it pulls from);
+`TroveBond.close` was a false positive (the caller must be the bonder) and now pulls from the caller;
 "state written after external calls" in `close` was fixed by writing first (the deployed testnet
 contract has the earlier order, protected by `nonReentrant` with the same behavior); unused return
 values, the low-level call that sends native BTC, a missing zero check on the bonder (never zero) and

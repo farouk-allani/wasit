@@ -21,7 +21,7 @@
 **[Live proof](#live-proof)** ·
 **[A full deal on the explorer](https://explorer.test.mezo.org/tx/0x12a1b91615d829ebbcbe8cf411f2385860d59d511077be02ebdc95e270e7c788)** ·
 **[Security review](docs/security-review.md)** ·
-**[Contracts](#deployed-on-mezo-testnet)**
+**[Contracts](#deployed-contracts-on-mezo-testnet)**
 
 </div>
 
@@ -226,7 +226,7 @@ agent or supplier has used Wasit, and no real money has moved.
 
 The fee side is a labeled model on testnet volume: [wasit.app/economics](https://wasit.app/economics).
 
-## What the contracts refuse
+## Security model: what the contracts refuse
 
 The escrow and the bond re-check everything on every call. A call reverts unless all of this holds:
 
@@ -245,7 +245,7 @@ Refunds of escrowed MUSD never depend on the bond or its oracle: the escrow pays
 call that fails is recorded so anyone can retry it. Fees are taken only on value that stays with
 the supplier: no fee on refunds, none on the bond. Escrowed MUSD is never deposited anywhere.
 
-## Why Mezo
+## Mezo integration
 
 - **BTC is the collateral, natively.** BTC is Mezo's native asset and also an ERC-20 (a
   precompile), so the bond holds BTC itself, not a wrapped copy, and a sourcing agent posts it
@@ -308,7 +308,7 @@ cd .. && pnpm --filter @wasit/web test    # 95 web tests
 - Mezo testnet only, not audited: two internal reviews, recorded in
   [docs/security-review.md](docs/security-review.md).
 
-## Deployed on Mezo testnet
+## Deployed contracts on Mezo testnet
 
 Chain 31611. All contracts are verified on the explorer. The web app is live at
 **[wasit.app](https://wasit.app)** (static build on Vercel; it reads Mezo testnet directly).
