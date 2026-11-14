@@ -149,9 +149,11 @@ contract TroveBond is ReentrancyGuard {
         if (closed[dealId]) revert AlreadyClosed(dealId);
         if (msg.sender != b.bonder) revert NotBonder();
         closed[dealId] = true;
+        b.musdHeld = 0;
+        b.btcHeld = 0;
 
         TroveVault vault = vaultOf[dealId];
-        uint256 repaid;
+        uint256 repaid = 0;
         if (borrowerOperations.troveManager().getTroveStatus(address(vault)) == 1) {
             repaid = vault.amountToClose();
             uint256 held = musd.balanceOf(address(vault));
@@ -160,8 +162,6 @@ contract TroveBond is ReentrancyGuard {
         }
         if (borrowerOperations.collSurplusPool().getCollateral(address(vault)) != 0) vault.claimCollateral();
         (uint256 musdOut, uint256 btcOut) = vault.sweep(b.bonder);
-        b.musdHeld = 0;
-        b.btcHeld = 0;
         emit BondClosed(dealId, b.bonder, repaid, btcOut, musdOut);
     }
 
