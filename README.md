@@ -9,7 +9,7 @@
 [![Mezo](https://img.shields.io/badge/mezo-testnet%2031611-ddb886?style=flat-square)](https://explorer.test.mezo.org/address/0x9d7573dd4A929311DDFC130ED085127517A9fC85)
 [![CI](https://img.shields.io/github/actions/workflow/status/farouk-allani/wasit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/farouk-allani/wasit/actions/workflows/ci.yml)
 [![Solidity](https://img.shields.io/badge/solidity-0.8.28-0b1624?style=flat-square)](contracts/)
-[![contract tests](https://img.shields.io/badge/contract%20tests-272%20passing-ddb886?style=flat-square)](#tests)
+[![contract tests](https://img.shields.io/badge/contract%20tests-309%20passing-ddb886?style=flat-square)](#tests)
 [![coverage](https://img.shields.io/badge/coverage-100%25%20lines%20%26%20branches-ddb886?style=flat-square)](#tests)
 [![web tests](https://img.shields.io/badge/web%20tests-95%20passing-ddb886?style=flat-square)](#tests)
 [![audit](https://img.shields.io/badge/audit-none%20yet-0b1624?style=flat-square)](docs/security-review.md)
@@ -149,6 +149,41 @@ A signed statement proves that a named party signed it, together with a fingerpr
 their evidence file, so the file cannot be swapped later. It does not prove that goods exist or
 shipped; the challenge window and the arbiter exist for that.
 
+## Trove mode: a bond backed by Mezo's MUSD borrowing system (Wave 2)
+
+For trade-size deals there is a second kind of bond. The bond poster's BTC opens a **trove** on
+Mezo's MUSD borrowing system, inside a vault that exists only for this deal. The trove lends MUSD
+against the BTC, and **that borrowed MUSD stays in the vault as the bond**.
+
+- **If the supplier defaults**, the buyer is paid in MUSD straight from the vault. No BTC is sold:
+  no swap, no slippage, no price argument at the moment of default.
+- **If the deal goes well**, the bond is freed. The poster brings back the small difference (the
+  0.1% borrowing fee plus interest at 1% a year) and gets all the BTC back.
+- **If BTC falls**, that is the poster's risk, not the buyer's. In trove mode the buyer's cover is
+  held in MUSD from the moment the bond is posted. Below 110% anyone can liquidate the trove: the
+  poster loses the BTC and the vault keeps its MUSD.
+
+[`TroveBond`](contracts/src/TroveBond.sol) works with an **unchanged** `WasitEscrow`, deployed as a
+third contract set. It has no owner, and nothing in it can be paused. The design was checked against the
+verified source of Mezo's BorrowerOperations and TroveManager before any code was written; a
+fork test shows a contract opening, topping up and closing a real trove.
+
+What trove mode costs and risks, in plain terms:
+
+| | |
+|---|---|
+| **Minimum size** | A trove borrows at least 1,800 MUSD (plus a 200 MUSD reserve the system holds). The bond borrows the larger of that and the deal's coverage. Trove mode suits advances from about 1,500 MUSD; small deals keep the BTC bond above |
+| **Cost to the poster** | 0.1% borrowing fee, plus 1% a year simple interest (on the 2,001.8 MUSD the trove owes), paid when the trove closes. On testnet a month cost 3.44 MUSD |
+| **Liquidation** | Below a 110% collateral ratio, at MUSD's own PriceFeed price. The poster loses the BTC; the buyer's cover is untouched |
+| **Redemption** | Anyone can swap MUSD for collateral at face value, lowest-ratio troves first. A redeemed trove's BTC is exchanged for its debt; the leftover BTC is collected and returned when the poster closes. This happened to our first live trove four blocks after it opened, because we opened it at 117%. Open at about 200% |
+| **Recovery mode** | If Mezo's whole system falls below 150%, closing a trove is refused until it recovers, so the poster waits for the BTC. The buyer is never blocked: paying the buyer never touches the trove |
+| **Governance** | BorrowerOperations is an upgradeable proxy under Mezo governance; rate and minimum-debt changes have a 7-day delay |
+| **MUSD** | Counted as 1 USD |
+
+Buyer funds in escrow never enter the Stability Pool or any yield product. Stability Pool deposits
+are not principal-safe (in a liquidation part of the MUSD becomes BTC at a discount), and the
+escrow holds the buyer's money, so it stays idle.
+
 ## Live proof
 
 Everything below happened on Mezo testnet. Every link opens the transaction on the public explorer.
@@ -169,7 +204,7 @@ the next. Created to released in about three minutes:
 The supplier received exactly 9.95 MUSD of the 10 MUSD order (0.5% fee), and the BTC went back to
 the bond poster.
 
-**The other outcomes**, each on a 100 MUSD order (30 upfront, 70 balance):
+**The other outcomes**, on 100 MUSD orders (30 upfront, 70 balance) unless stated:
 
 | Scenario | Deal | What happened on-chain | Key transactions |
 |---|---|---|---|
@@ -177,6 +212,7 @@ the bond poster.
 | Supplier default | live #3 | Production deadline missed. The escrow returned 0.15 MUSD; the bond sold BTC on the Mezo pool and paid 29.85 MUSD. **The buyer got the full 30 MUSD back** | [bond posted](https://explorer.test.mezo.org/tx/0x212220b3709b408216563f5d341ecd3520393293720c157f53f4e1e766530833) · [claim](https://explorer.test.mezo.org/tx/0x7d517a0cbaf2bc2325271173a52a1029d30389f37d413a0a0f3ab73be151c61b) |
 | BTC crash (simulated price feed) | demo-sim #1 | Price set from 80,000 to 60,000; coverage fell to 113.6%, below the 115% line. Protection sold 0.000529 BTC for 41.66 MUSD on the **real** pool | [price drop](https://explorer.test.mezo.org/tx/0x4fca6c2c8e8fc1de7375ca38919e134abdd3d03782a1591ec40fb9548bc1bf32) · [protect](https://explorer.test.mezo.org/tx/0x89c823823e7ff466ace7210f99d42b77abfb80d870f2730211817949fe5ce7d1) |
 | Dispute | live #4 | Buyer disputed after shipping; 70 MUSD held until the arbiter rules (due 21 Nov 2026) | [dispute](https://explorer.test.mezo.org/tx/0xbbcfb6372ceed7850494795b4c1ccabad0527cfba6942efc29bd326c2fa4d69e) |
+| Supplier default, **trove mode** | trove #1 | Order 3,000 MUSD (900 upfront), 1,800 MUSD trove. The vault paid the buyer **895.5 MUSD; no BTC sold**. An outside address then redeemed the thin trove; the poster's close collected the leftover BTC and MUSD | [bond posted](https://explorer.test.mezo.org/tx/0x6ffdb8e357978e723d90f0328a2b9c26a22e615255c3c1775a558f5c5f9f7d96) · [claim](https://explorer.test.mezo.org/tx/0x70c38b04e219b3c417e7eb684a5e83ff0aca60ba4f597df8136ab46c902d3922) · [outside redemption](https://explorer.test.mezo.org/tx/0xe92674f7d44bfd1e332f48ca85c76967a2a5be2ef515f691268700efbed69596) · [close](https://explorer.test.mezo.org/tx/0xb0637503509e0792f730b54d5f46a1f8cc3a632dc5960975fa3634bf75be63db) |
 
 ## What the contracts refuse
 
@@ -217,6 +253,7 @@ the supplier: no fee on refunds, none on the bond. Escrowed MUSD is never deposi
 | **MUSD PriceFeed** | Prices every bond posted since 14 Nov 2026 ([`MusdPriceFeedAdapter`](contracts/src/oracles/MusdPriceFeedAdapter.sol)). A price older than 60 seconds is refused and the app says the price is unavailable. It wraps the same Skip BTC/USD feed, so it is not a second price source: a bond is valued exactly as MUSD values collateral |
 | **Skip BTC/USD** | Underneath the PriceFeed; read directly by bonds posted before 14 Nov 2026, with staleness and bounds checks |
 | **Pyth** | Second oracle adapter, implemented and fork-tested; not deployed while its testnet feed is stale |
+| **MUSD borrowing system** | Trove mode: a per-deal vault opens a trove (BorrowerOperations) with the bond poster's BTC, and the borrowed MUSD is the bond; liquidation, redemption and recovery mode handled as the TroveManager source does |
 | **Mezo Router** | Sells bond BTC for MUSD on protection or a claim, with an oracle-bounded minimum output |
 | **Mezo Passport** | Wallet connection in the web app |
 
@@ -224,7 +261,7 @@ the supplier: no fee on refunds, none on the bond. Escrowed MUSD is never deposi
 
 ```sh
 cd contracts
-forge test                          # 272 tests: unit, fuzz and invariant
+forge test                          # 309 tests: unit, fuzz and invariant
 FOUNDRY_PROFILE=ci forge test       # same, with 10,000 fuzz runs and deeper invariant runs
 forge coverage --report summary --no-match-coverage "(test|script)/"
 MEZO_TESTNET_RPC=https://rpc.test.mezo.org FOUNDRY_PROFILE=fork forge test   # against Mezo testnet
@@ -232,7 +269,7 @@ MEZO_TESTNET_RPC=https://rpc.test.mezo.org FOUNDRY_PROFILE=fork forge test   # a
 cd .. && pnpm --filter @wasit/web test    # 95 web tests
 ```
 
-- **Coverage:** 100% of lines (555/555), statements, branches (147/147) and functions in `src/`.
+- **Coverage:** 100% of lines (674/674), statements, branches (175/175) and functions in `src/`.
 - **Fuzzing** (10,000 runs each in CI): fee and payment splits, arbiter rulings, bond claims, the
   coverage formula, protection prices, statements signed with the wrong key, oracle decimals.
 - **Invariants** (random call sequences, 256 runs × depth 128 in CI, with moving BTC prices, pool
@@ -246,9 +283,12 @@ cd .. && pnpm --filter @wasit/web test    # 95 web tests
 
 ## Limits
 
-- **The bond can fall short.** In a fast BTC crash the bond can lose value faster than anyone
+- **The BTC bond can fall short.** In a fast BTC crash the BTC bond can lose value faster than anyone
   converts it. The buyer then receives what the bond holds, not more. The deal page shows the
   coverage ratio and both lines at all times.
+- **Trove mode** has its own costs and risks for the bond poster (minimum size, fee and interest,
+  liquidation below 110%, redemption, recovery mode): see the table in
+  [Trove mode](#trove-mode-a-bond-backed-by-mezos-musd-borrowing-system-wave-2).
 - MUSD is counted as 1 USD; there is no depeg guard yet.
 - Signed statements are only as good as the people named to sign them.
 - Event history is read straight from the public RPC, so a deal's timeline takes a few seconds to
@@ -272,6 +312,12 @@ The demo-sim set exists only to show a price crash on demand. Its oracle reports
 `isSimulated() = true`, and the app then shows a "Simulated price feed" banner on every page and on
 each bond. Full addresses are in [`deployments/`](deployments/). Open the app with
 `?deployment=mezo-testnet-demo-sim` to use that set.
+
+The trove set (`mezo-testnet-trove`, Wave 2) pairs an unchanged escrow with the trove-backed bond:
+[WasitEscrow `0xA6D38AD8…b783F`](https://explorer.test.mezo.org/address/0xA6D38AD8e7221026A3BC83267553215151eb783F) ·
+[TroveBond `0xDa137c21…41Da0`](https://explorer.test.mezo.org/address/0xDa137c212176BB86B743E043dbc5f6d605f41Da0) ·
+priced by the MUSD PriceFeed adapter above. Open the app with `?deployment=mezo-testnet-trove`, or
+pick the set in the page footer.
 
 ## Run locally
 
