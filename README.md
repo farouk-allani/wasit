@@ -214,6 +214,18 @@ the bond poster.
 | Dispute | live #4 | Buyer disputed after shipping; 70 MUSD held until the arbiter rules (due 21 Nov 2026) | [dispute](https://explorer.test.mezo.org/tx/0xbbcfb6372ceed7850494795b4c1ccabad0527cfba6942efc29bd326c2fa4d69e) |
 | Supplier default, **trove mode** | trove #1 | Order 3,000 MUSD (900 upfront), 1,800 MUSD trove. The vault paid the buyer **895.5 MUSD; no BTC sold**. An outside address then redeemed the thin trove; the poster's close collected the leftover BTC and MUSD | [bond posted](https://explorer.test.mezo.org/tx/0x6ffdb8e357978e723d90f0328a2b9c26a22e615255c3c1775a558f5c5f9f7d96) · [claim](https://explorer.test.mezo.org/tx/0x70c38b04e219b3c417e7eb684a5e83ff0aca60ba4f597df8136ab46c902d3922) · [outside redemption](https://explorer.test.mezo.org/tx/0xe92674f7d44bfd1e332f48ca85c76967a2a5be2ef515f691268700efbed69596) · [close](https://explorer.test.mezo.org/tx/0xb0637503509e0792f730b54d5f46a1f8cc3a632dc5960975fa3634bf75be63db) |
 
+## Deals signed by people outside the team
+
+**None yet (14 Nov 2026).** Everything in [Live proof](#live-proof) was signed by team wallets.
+The way in for outside people is live: [wasit.app/join](https://wasit.app/join) creates a test
+wallet in the person's own browser (the key never leaves their phone, and it works only on Mezo
+testnet), and an invite link tells them in plain words what they confirm and what their signature
+does and does not prove. An inspector or carrier needs no tokens. Who has signed, and any testnet
+funds we sent them, is listed in [docs/outside-testers.md](docs/outside-testers.md). No sourcing
+agent or supplier has used Wasit, and no real money has moved.
+
+The fee side is a labeled model on testnet volume: [wasit.app/economics](https://wasit.app/economics).
+
 ## What the contracts refuse
 
 The escrow and the bond re-check everything on every call. A call reverts unless all of this holds:
