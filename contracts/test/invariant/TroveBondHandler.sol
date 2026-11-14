@@ -104,6 +104,7 @@ contract TroveBondHandler is Test {
         uint256 coll = sys.getTroveColl(v);
         if ((redeemable * 1e18) / sys.price() >= coll) return; // underwater: not redeemable here
         if (full) return sys.redeemFull(v);
+        if (redeemable < 2) return; // nothing left to redeem partially
         uint256 lot = bound(lotSeed, 1, redeemable - 1);
         sys.redeemPartial(v, lot);
     }
