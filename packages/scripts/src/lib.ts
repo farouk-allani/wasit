@@ -42,6 +42,9 @@ export interface Deployment {
   owner: Address;
   simulatedPriceFeed: boolean;
   deployBlock: number;
+  /** Trove set only (PLAN 8.3d). */
+  bondKind?: "trove";
+  borrowerOperations?: Address;
 }
 
 export interface ContractCall {
@@ -54,7 +57,9 @@ export interface ContractCall {
 const repo = new URL("../../../", import.meta.url);
 export const chain = mezoTestnet;
 
-export function loadDeployment(name: "mezo-testnet" | "mezo-testnet-demo-sim"): Deployment {
+export function loadDeployment(
+  name: "mezo-testnet" | "mezo-testnet-demo-sim" | "mezo-testnet-trove",
+): Deployment {
   const d = JSON.parse(
     readFileSync(new URL(`deployments/${name}.json`, repo), "utf8"),
   ) as Deployment;
