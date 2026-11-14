@@ -52,6 +52,8 @@ contract PythOracleAdapter is IPriceOracle {
     /// @inheritdoc IPriceOracle
     /// @dev Reverts with Pyth's `StalePrice()` when the last update is older than `maxAge`.
     function btcUsd() external view returns (uint256 price, uint256 updatedAt) {
+        // Confidence is checked below (ConfidenceTooWide); Slither misses it through OracleMath
+        // slither-disable-next-line pyth-unchecked-confidence
         PythStructs.Price memory p = pyth.getPriceNoOlderThan(priceId, maxAge);
         if (p.price <= 0) revert InvalidAnswer(p.price);
         price = OracleMath.to1e18(uint256(uint64(p.price)), p.expo);
