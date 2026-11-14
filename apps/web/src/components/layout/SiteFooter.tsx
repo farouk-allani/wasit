@@ -41,6 +41,9 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-5 text-xs tracking-wide text-muted-foreground sm:px-6 lg:px-8">
           <span>Mezo testnet · Not audited</span>
+          <Link to="/economics" className="hover:text-gold">
+            Fee economics (a model)
+          </Link>
           <nav aria-label="Contract set" className="flex flex-wrap gap-x-4 gap-y-1">
             <span>Contract set:</span>
             {SETS.map(([name, label]) => (

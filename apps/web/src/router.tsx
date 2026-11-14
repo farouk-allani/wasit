@@ -44,6 +44,11 @@ export const router = createBrowserRouter([
         path: "/statement/:id/:role",
         lazy: () => import("./pilot/StatementPage").then((m) => ({ Component: m.StatementPage })),
       },
+      {
+        path: "/economics",
+        lazy: () =>
+          import("./economics/EconomicsPage").then((m) => ({ Component: m.EconomicsPage })),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },
