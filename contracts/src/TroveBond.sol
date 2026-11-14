@@ -157,7 +157,7 @@ contract TroveBond is ReentrancyGuard {
         if (borrowerOperations.troveManager().getTroveStatus(address(vault)) == 1) {
             repaid = vault.amountToClose();
             uint256 held = musd.balanceOf(address(vault));
-            if (repaid > held) musd.safeTransferFrom(b.bonder, address(vault), repaid - held);
+            if (repaid > held) musd.safeTransferFrom(msg.sender, address(vault), repaid - held); // msg.sender is the bonder
             vault.closeTrove();
         }
         if (borrowerOperations.collSurplusPool().getCollateral(address(vault)) != 0) vault.claimCollateral();
