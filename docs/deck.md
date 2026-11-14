@@ -1,6 +1,6 @@
 # Wasit deck
 
-**[Open the deck (PDF)](wasit-deck.pdf)**: nine slides, Wave 2 version 1 (13 Nov 2026).
+**[Open the deck (PDF)](wasit-deck.pdf)**: ten slides, Wave 2 version 2 (14 Nov 2026).
 
 It is built from one data file, [`deck/slides.json`](deck/slides.json), with the real app captures
 in [`deck/assets/`](deck/assets/). Rebuild it with headless Chrome:
