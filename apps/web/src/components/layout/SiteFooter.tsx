@@ -1,7 +1,15 @@
 import { ExternalLink } from "lucide-react";
+import { Link } from "react-router";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { useDeployment } from "@/deployment";
 import { explorerAddress, REPO_URL } from "@/lib/links";
+
+/** The three contract sets on Mezo testnet (deployments/). */
+const SETS = [
+  ["mezo-testnet", "Live (BTC bond)"],
+  ["mezo-testnet-trove", "Trove-backed bond"],
+  ["mezo-testnet-demo-sim", "Demo (simulated price feed)"],
+] as const;
 
 /** Every page ends with what Wasit is, where it runs, and that it is not audited. */
 export function SiteFooter() {
@@ -31,9 +39,22 @@ export function SiteFooter() {
         />
       </div>
       <div className="border-t border-border">
-        <p className="mx-auto max-w-7xl px-4 py-5 text-xs tracking-wide text-muted-foreground sm:px-6 lg:px-8">
-          Mezo testnet · Not audited
-        </p>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-5 text-xs tracking-wide text-muted-foreground sm:px-6 lg:px-8">
+          <span>Mezo testnet · Not audited</span>
+          <nav aria-label="Contract set" className="flex flex-wrap gap-x-4 gap-y-1">
+            <span>Contract set:</span>
+            {SETS.map(([name, label]) => (
+              <Link
+                key={name}
+                to={`/deals?deployment=${name}`}
+                aria-current={deployment.name === name ? "true" : undefined}
+                className={deployment.name === name ? "text-gold" : "hover:text-gold"}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </div>
       </div>
     </footer>
   );

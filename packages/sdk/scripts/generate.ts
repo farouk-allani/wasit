@@ -31,6 +31,12 @@ const artifact = (file: string, contract = file) =>
 const ABIS: Record<string, [file: string, contract?: string][]> = {
   wasitEscrowAbi: [["WasitEscrow"]],
   advanceBondAbi: [["AdvanceBond"]],
+  troveBondAbi: [["TroveBond"]],
+  musdBorrowingAbi: [
+    ["IMusdBorrowing", "IBorrowerOperations"],
+    ["IMusdBorrowing", "ITroveManager"],
+    ["IMusdBorrowing", "ISortedTroves"],
+  ],
   priceOracleAbi: [["IPriceOracle"]],
   demoOracleAbi: [["DemoOracle"]],
   swapAdapterAbi: [["ISwapAdapter"]],

@@ -17,12 +17,17 @@ import {
 /** A call to a state-changing contract function, typed from its ABI. */
 export type ContractRequest<
   abi extends Abi = Abi,
-  fn extends ContractFunctionName<abi, "nonpayable"> = ContractFunctionName<abi, "nonpayable">,
+  fn extends ContractFunctionName<abi, "nonpayable" | "payable"> = ContractFunctionName<
+    abi,
+    "nonpayable" | "payable"
+  >,
 > = {
   address: Address;
   abi: abi;
   functionName: fn;
-  args: ContractFunctionArgs<abi, "nonpayable", fn>;
+  args: ContractFunctionArgs<abi, "nonpayable" | "payable", fn>;
+  /** Native BTC sent with the call (trove-mode bond posting). */
+  value?: bigint;
 };
 
 /** Client methods the helpers use; the shared public client satisfies it, tests pass a stub. */
