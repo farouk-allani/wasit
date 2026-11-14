@@ -66,6 +66,11 @@ contract TroveBond is ReentrancyGuard {
         oracle = oracle_;
     }
 
+    modifier onlyEscrow() {
+        if (msg.sender != address(escrow)) revert NotEscrow();
+        _;
+    }
+
     // ───────────────────────────── Bonder ─────────────────────────────
 
     /// @notice Opens a trove for `dealId` with `msg.value` BTC and keeps the MUSD it mints as the
@@ -128,6 +133,70 @@ contract TroveBond is ReentrancyGuard {
     /// @notice Not available in trove mode.
     function protect(uint256) external pure {
         revert ProtectNotApplicable();
+    }
+
+    /// @notice After the bond is released or claimed: repays and closes the trove, or collects
+    ///         what a liquidated or redeemed trove left, and sends all BTC and MUSD in the vault to
+    ///         the bonder. The bonder brings only the shortfall (borrowing fee plus interest, plus
+    ///         whatever a claim paid out), pulled with an MUSD allowance to this contract.
+    /// @dev Only the bonder. The MUSD system refuses to close a trove in recovery mode (system
+    ///      TCR < 150%) or if closing would push TCR below 150%; this then reverts and can be
+    ///      retried. The buyer is never affected: `claim` and `release` do not touch the trove.
+    function close(uint256 dealId) external nonReentrant {
+        Bond storage b = _bonds[dealId];
+        if (b.status == BondStatus.None) revert NoTrove(dealId);
+        if (b.status == BondStatus.Active) revert BondStillLive(dealId);
+        if (closed[dealId]) revert AlreadyClosed(dealId);
+        if (msg.sender != b.bonder) revert NotBonder();
+        closed[dealId] = true;
+
+        TroveVault vault = vaultOf[dealId];
+        uint256 repaid;
+        if (borrowerOperations.troveManager().getTroveStatus(address(vault)) == 1) {
+            repaid = vault.amountToClose();
+            uint256 held = musd.balanceOf(address(vault));
+            if (repaid > held) musd.safeTransferFrom(b.bonder, address(vault), repaid - held);
+            vault.closeTrove();
+        }
+        if (borrowerOperations.collSurplusPool().getCollateral(address(vault)) != 0) vault.claimCollateral();
+        (uint256 musdOut, uint256 btcOut) = vault.sweep(b.bonder);
+        b.musdHeld = 0;
+        b.btcHeld = 0;
+        emit BondClosed(dealId, b.bonder, repaid, btcOut, musdOut);
+    }
+
+    // ───────────────────────────── Escrow ─────────────────────────────
+
+    /// @notice Pays up to `amount`, capped at the covered amount, to `to` in MUSD from the vault.
+    ///         No BTC is sold. What stays in the vault goes to the bonder at `close`.
+    /// @dev Only the escrow; the bond must be live.
+    function claim(uint256 dealId, uint256 amount, address to)
+        external
+        onlyEscrow
+        nonReentrant
+        returns (uint256 paid)
+    {
+        Bond storage b = _bonds[dealId];
+        if (b.status != BondStatus.Active) revert NoActiveBond(dealId);
+        TroveVault vault = vaultOf[dealId];
+        uint256 owed = amount < b.covered ? amount : b.covered;
+        uint256 held = musd.balanceOf(address(vault));
+        paid = held < owed ? held : owed;
+        b.status = BondStatus.Claimed;
+        b.musdHeld = uint128(held - paid);
+        emit IAdvanceBond.BondClaimed(dealId, to, amount, paid);
+        if (paid < owed) emit IAdvanceBond.BondShortfall(dealId, amount, paid);
+        vault.pay(to, paid);
+    }
+
+    /// @notice Frees the bond; the bonder then calls `close`. No-op without a live bond, and it
+    ///         makes no external call, so it cannot fail.
+    /// @dev Only the escrow.
+    function release(uint256 dealId) external onlyEscrow nonReentrant {
+        Bond storage b = _bonds[dealId];
+        if (b.status != BondStatus.Active) return;
+        b.status = BondStatus.Released;
+        emit IAdvanceBond.BondReleased(dealId, b.bonder, 0, 0);
     }
 
     // ───────────────────────────── Views ─────────────────────────────
